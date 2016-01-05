@@ -26,10 +26,8 @@ zhangyeungineq = 3(nonnegative(n,union(I,K)) + nonnegative(n,union(I,L)) + nonne
 
 # The Zhang-Yeung inequality is a new inequality
 @test !(zhangyeungineq in G)
-# And it see that invalidf is not entropy
+# And it sees that invalidf is not a valid entropy
 @test dot(zhangyeungineq, invalidf) == -1
-
-# FIXME it should be invalidfentropy(12)
-#       what is returned by CDD is not even a certificate.
-#       it seems to be a bug in cddlib
-println(redundant(zhangyeungineq, G)[2])
+# Actually, invalidf is even the certificate returned by CDD
+# to show that the Zhang-Yeung inequality is new
+@test PrimalEntropy{Int}(Array{Int}(redundant(zhangyeungineq, G)[2][2:end])) == invalidf
