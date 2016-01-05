@@ -1,11 +1,15 @@
 module InformationTheory
 
-import Base.setindex!, Base.*, Base.show, Base.getindex, Base.setdiff, Base.union, Base.promote_rule, Base.in
+using CDD
+
+import Base.setindex!, Base.*, Base.show, Base.getindex, Base.setdiff, Base.union, Base.promote_rule, Base.in, Base.-
 
 export xlogx, hb
 export singleton, set, card
-export EntropicVector, zeroentropy, submodular, matussquare, cardminusentropy, cardentropy, invalidfentropy, matusrentropy, constentropy
-export EntropicCone, EntropicConeLift, polymatroidcone
+export EntropicVector
+export PrimalEntropy, cardminusentropy, cardentropy, invalidfentropy, matusrentropy, zhangyeunginequality
+export DualEntropy, nonnegative, nondecreasing, submodular, matussquare
+export EntropicCone, EntropicConeLift, polymatroidcone, redundant
 
 # Entropy log computation
 
@@ -94,29 +98,7 @@ function ntodim(n)
   Unsigned((1 << n) - 1)
 end
 
-abstract EntropicVector{T<:Real}
-
-type DualEntropy{T<:Real} <: AbstractArray{T, 1}
-type PrimalEntropy{T<:Real} <: AbstractArray{T, 1}
-  n::Int
-  h::AbstractArray{T, 1}
-  liftid::Int
-
-  function EntropicVector(n::Int)
-    new(n, Array{T, 1}(ntodim(n)))
-  end
-
-  function EntropicVector(h::AbstractArray{T, 1})
-    liftid = 1 # By default, the first cone of the lift
-    N = length(h)
-    n = Int(round(log2(N + 1)))
-    if ntodim(n) != N
-      error("Illegal size of entropic constraint")
-    end
-    new(n, h)
-  end
-
-end
+abstract EntropicVector{T<:Real} <: AbstractArray{T, 1}
 
 Base.size{T<:Real}(h::EntropicVector{T}) = size(h.h)
 Base.linearindexing{T<:Real}(::Type{EntropicVector{T}}) = Base.LinearFast()
@@ -135,85 +117,149 @@ Base.setindex!{T<:Real}(h::EntropicVector{T}, v::T, i::Int) = h.h[i] = v
 #  end
 #end
 
-function constentropy{T<:Real}(n, x::T)
-  EntropicVector{T}(x * ones(T, ntodim(n)))
+type DualEntropy{T<:Real} <: EntropicVector{T}
+  n::Int
+  h::AbstractArray{T, 1}
+  liftid::Int
+  equality::Bool
+
+  function DualEntropy(n::Int)
+    new(n, Array{T, 1}(ntodim(n)), 1)
+  end
+
+  function DualEntropy(h::AbstractArray{T, 1})
+    N = length(h)
+    n = Int(round(log2(N + 1)))
+    if ntodim(n) != N
+      error("Illegal size of entropic constraint")
+    end
+    new(n, h, 1, false)
+  end
+
 end
 
-function zeroentropy(n)
-  constentropy(n, 0)
+type PrimalEntropy{T<:Real} <: EntropicVector{T}
+  n::Int
+  h::AbstractArray{T, 1}
+  liftid::Int # 1 by default: the first cone of the lift
+
+  function PrimalEntropy(n::Int)
+    new(n, Array{T, 1}(ntodim(n)), 1)
+  end
+
+  function PrimalEntropy(h::AbstractArray{T, 1})
+    N = length(h)
+    n = Int(round(log2(N + 1)))
+    if ntodim(n) != N
+      error("Illegal size of entropic constraint")
+    end
+    new(n, h, 1)
+  end
+
 end
 
-function one{T<:Real}(h::EntropicVector{T})
-  constentropy(h.n, Base.convert(T, 1))
+(-){T<:Real}(h::PrimalEntropy{T}) = PrimalEntropy{T}(-h.h)
+(-){T<:Real}(h::DualEntropy{T})   =   DualEntropy{T}(-h.h)
+
+function constprimalentropy{T<:Real}(n, x::T)
+  PrimalEntropy{T}(x * ones(T, ntodim(n)))
+end
+function constdualentropy{T<:Real}(n, x::T)
+  DualEntropy{T}(x * ones(T, ntodim(n)))
+end
+
+function one{T<:Real}(h::PrimalEntropy{T})
+  constprimalentropy(h.n, Base.convert(T, 1))
+end
+function one{T<:Real}(h::DualEntropy{T})
+  constdualentropy(h.n, Base.convert(T, 1))
 end
 
 #Base.similar(h::EntropicVector) = EntropicVector(h.n)
-Base.similar{T}(h::EntropicVector, ::Type{T}, dims::Dims) = EntropicVector{T}(h.n)
+Base.similar{T}(h::PrimalEntropy, ::Type{T}, dims::Dims) = PrimalEntropy{T}(h.n)
+Base.similar{T}(h::DualEntropy, ::Type{T}, dims::Dims) = DualEntropy{T}(h.n)
 #Base.similar{T}(h::EntropicVector, ::Type{T}) = EntropicVector(h.n)
 
 # Classical Entropic Inequalities
+function dualentropywith(n, pos, neg)
+  ret = constdualentropy(n, 0)
+  for I in pos
+    if I != 0x0
+      ret[I] = 1
+    end
+  end
+  for I in neg
+    if I != 0x0
+      ret[I] = -1
+    end
+  end
+  ret
+end
 
 function nonnegative(n, S::Unsigned)
-  ret = zeroentropy(n)
-  ret[S] = 1
-  ret
+  dualentropywith(n, [S], [])
 end
 function nonnegative(n, s::Signed)
   nonnegative(n, set(s))
 end
 
 function nondecreasing(n, S::Unsigned, T::Unsigned)
-  ret = zeroentropy(n)
   T = union(S, T)
-  ret[S] = -1
-  ret[T] = 1
-  ret
+  dualentropywith(n, [T], [S])
 end
 function nondecreasing(n, s::Signed, t::Signed)
   nonnegative(n, set(s), set(t))
 end
 
 function submodular(n, S::Unsigned, T::Unsigned, I::Unsigned)
-  ret = zeroentropy(n)
   S = union(S, I)
   T = union(T, I)
   U = union(S, T)
-  ret[S] = 1
-  ret[T] = 1
-  ret[U] = -1
-  if I != 0x0
-    ret[I] = -1
-  end
-  return ret
+  dualentropywith(n, [S, T], [U, I])
 end
+submodular(n, S::Unsigned, T::Unsigned) = submodular(n, S, T, 0x0)
 function submodular(n, s::Signed, t::Signed, i::Signed)
   return submodular(n, set(s), set(t), set(i))
 end
+submodular(n, s::Signed, t::Signed) = submodular(n, set(s), set(t), 0x0)
+
+function zhangyeunginequality(i::Signed, j::Signed, k::Signed, l::Signed)
+  n = 4
+  I = set(i)
+  J = set(j)
+  K = set(k)
+  L = set(l)
+  submodular(n, K, L, I) + submodular(n, K, L, J) + submodular(n, I, J) - submodular(n, K, L) +
+  submodular(n, I, K, L) + submodular(n, I, L, K) + submodular(n, K, L, I)
+end
+zhangyeunginequality() = zhangyeunginequality(1, 2, 3, 4)
 
 function matussquare(i, j, k, l)
   n = 4
-  ret = zeroentropy(n)
+  pos = []
+  I = singleton(i)
+  J = singleton(j)
+  K = singleton(K)
+  L = singleton(L)
+  ij = union(I, J)
   for s in 0b1:ntodim(n)
-    if card(s) == 2
-      ret[s] = 1
+    if card(s) == 2 && s != ij
+      pos = [pos; s]
     end
   end
-  ret[union(singleton(i), singleton(j))] = -1
-  ret[singleton(k)] = -1
-  ret[singleton(l)] = -1
-  kl = union(singleton(k), singleton(l))
-  ret[union(singleton(i), kl)] = -1
-  ret[union(singleton(j), kl)] = -1
-  return ret
+  kl = union(K, L)
+  ikl = union(I, kl)
+  jkl = union(J, kl)
+  dualentropywith(n, pos, [ij, K, L, ikl, jkl])
 end
 
 # Classical Entropic Vectors
 function cardminusentropy(n, I::Unsigned)
-  ret = zeroentropy(n)
+  h = PrimalEntropy{Int}(n)
   for J in 0b1:ntodim(n)
-    ret[J] = card(setdiff(J, I))
+    h[J] = card(setdiff(J, I))
   end
-  return ret
+  return h
 end
 cardminusentropy(n, i::Signed) = cardminusentropy(n, set(i))
 
@@ -222,23 +268,20 @@ function cardentropy(n)
 end
 
 #min(h1, h2) gives Array{Any,1} instead of EntropicVector :(
-function mymin{T<:Real}(h1::EntropicVector{T}, h2::EntropicVector{T}) # FIXME cannot make it work with min :(
-  EntropicVector{T}(min(h1.h, h2.h))
+function mymin{T<:Real}(h1::PrimalEntropy{T}, h2::PrimalEntropy{T}) # FIXME cannot make it work with min :(
+  PrimalEntropy{T}(min(h1.h, h2.h))
 end
 
 function invalidfentropy(S::Unsigned)
   n = 4
   #ret = min(constentropy(n, 4), 2 * cardentropy(n)) #can't make it work
-  ret = mymin(constentropy(n, 4), cardentropy(n) * 2)
-  #toTikz(consth(4))
-  #toTikz(2 * cardh())
-  #toTikz(ret)
+  h = mymin(constprimalentropy(n, 4), cardentropy(n) * 2)
   for i in 0b1:ntodim(n)
     if i != S && card(i) == 2
-      ret[i] = 3
+      h[i] = 3
     end
   end
-  return ret
+  return h
 end
 
 function invalidfentropy(s::Signed)
@@ -247,8 +290,8 @@ end
 
 function matusrentropy(t, S::Unsigned)
   n = 4
-  ret = mymin(constentropy(n, t), cardminusentropy(n, S))
-  return ret
+  h = mymin(constprimalentropy(n, t), cardminusentropy(n, S))
+  return h
 end
 
 function matusrentropy(t, s::Signed)
@@ -279,12 +322,40 @@ end
 type EntropicCone{T<:Real}
   n::Int
   A::Array{T,2}
+  equalities::IntSet
+
+  function EntropicCone(n::Int, A::Array{T,2}, equalities::IntSet)
+    if ntodim(n) != size(A, 2)
+      error("The dimension in n does not agree with the number of columns of A")
+    end
+    if !isempty(equalities) && last(equalities) > size(A, 1)
+      error("Equalities should range from 1 to the number of rows of A")
+    end
+    new(n, A, equalities)
+  end
+
 end
+
+EntropicCone{T<:Real}(n::Int, A::Array{T,2}) = EntropicCone{T}(n, A, IntSet([]))
 
 type EntropicConeLift{T<:Real}
   n::Array{Int,1}
   A::Array{T,2}
+  equalities::IntSet
+
+  function EntropicConeLift(n::Array{Int,1}, A::Array{T,2}, equalities::IntSet)
+    if sum(map(ntodim, n)) != size(A, 2)
+      error("The dimensions in n does not agree with the number of columns of A")
+    end
+    if last(equalities) > size(A, 1)
+      error("Equalities should range from 1 to the number of rows of A")
+    end
+    new(n, A, equalities)
+  end
+
 end
+
+EntropicConeLift{T<:Real}(n::Array{Int,1}, A::Array{T,2}) = EntropicConeLift(n, A, IntSet([]))
 
 Base.convert{T<:Real}(::Type{EntropicConeLift{T}}, x::EntropicCone{T}) = EntropicConeLift([x.n], x.A)
 
@@ -339,18 +410,32 @@ function polymatroidcone(n::Integer)
   EntropicCone(n, A)
 end
 
-function Base.in{T<:Real}(h::EntropicVector{T}, H::EntropicCone{T})
+function Base.in{T<:Real}(h::PrimalEntropy{T}, H::EntropicCone{T})
   if h.n != H.n
     error("The vector is not of the same dimension than the cone")
   end
   reducedim(&, (H.A*h.h) .>= 0, true)[1]
 end
 
-function Base.in{T<:Real}(h::EntropicVector{T}, H::EntropicConeLift{T})
-  if h.n != H.n
-    error("The vector is not of the same dimension than the cone")
+function redundant{T<:Real}(h::DualEntropy{T}, H::EntropicCone{T})
+  row = size(H.A, 1) + 1
+  if h.equality
+    linset = copy(H.equalities)
+    push!(eqs, row)
+  else
+    linset = H.equalities
   end
-  reducedim(&, (H.A*h.h) .>= 0, true)[1]
+  ine = CDD.InequalityDescription([-H.A; -h.h'], zeros(T, row), linset)
+  (isin, certificate) = CDD.redundant(ine, row)
+end
+
+function Base.in{T<:Real}(h::DualEntropy{T}, H::EntropicCone{T})
+  redundant(h, H)[1]
+end
+
+function Base.in{T<:Real}(h::PrimalEntropy{T}, H::EntropicConeLift{T})
+  E = zeros(T, ntodim(n), ntodim(n))
+  true
 end
 
 end # module
