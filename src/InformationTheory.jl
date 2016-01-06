@@ -4,11 +4,11 @@ using CDD
 
 import Base.setindex!, Base.*, Base.show, Base.getindex, Base.setdiff, Base.union, Base.promote_rule, Base.in, Base.-, Base.push!
 
-export xlogx, hb
+export xlogx, hb, hxi, g_p
 export singleton, set, card
 export EntropicVector
-export PrimalEntropy, cardminusentropy, cardentropy, invalidfentropy, matusrentropy, zhangyeunginequality
-export DualEntropy, nonnegative, nondecreasing, submodular, matussquare
+export PrimalEntropy, cardminusentropy, cardentropy, invalidfentropy, matusrentropy, entropyfrompdf
+export DualEntropy, nonnegative, nondecreasing, submodular, matussquare, zhangyeunginequality, constraint41, constraint42, constraint43, constraint4, constraint51, constraint52, constraint53, constraint5
 export EntropicCone, EntropicConeLift, polymatroidcone, redundant, equalonsubsetsof!
 
 # Entropy log computation
@@ -34,6 +34,15 @@ end
 
 function hb(p)
   return hb(1, p)
+end
+
+function hxi(p)
+  #return [hb(2*p) ones(length(p),1) hb(2*p)+1]
+  [hb(2*p) ones(length(p),1) hb(2*p)+1 hb(1/2+p) 2*hb(1/2,p)-2*p hb(1/2,p)+1/2 hb(2*p)+1 hb(p) hb(2*p)+2*p hb(1/2,p)+1/2 hb(2*p)+1 hb(1/2,p)+1/2 hb(2*p)+1 hb(2*p)+1 hb(2*p)+1]'
+end
+
+function g_p(p)
+  hxi(p) + hb(p) * matusrentropy(1,14) + (1 + 2*p - hb(2*p)/2) * (matusrentropy(1,23) + matusrentropy(2,4))
 end
 
 # Set Manipulation
@@ -144,10 +153,16 @@ type DualEntropy{T<:Real} <: AbstractDualEntropy{T}
 
 end
 
+DualEntropy{T<:Real}(h::AbstractArray{T, 1}) = DualEntropy{T}(h)
+
 type DualEntropyLift{T<:Real} <: AbstractDualEntropy{T}
   n::Array{Int,1}
   h::AbstractArray{T, 1}
   equality::Bool
+
+  function DualEntropyLift(n::Array{Int,1}, h::Array{T,1}, equality::Bool)
+    new(n, h, equality)
+  end
 
   function DualEntropyLift(h::DualEntropy{T}, N)
     hlift = zeros(T, N*ntodim(h.n))
@@ -158,7 +173,11 @@ type DualEntropyLift{T<:Real} <: AbstractDualEntropy{T}
 
 end
 
-type PrimalEntropy{T<:Real} <: EntropicVector{T}
+DualEntropyLift{T<:Real}(n::Array{Int,1}, h::Array{T,1}, equality::Bool) = DualEntropyLift{T}(n, h, equality)
+
+abstract AbstractPrimalEntropy{T<:Real} <: EntropicVector{T}
+
+type PrimalEntropy{T<:Real} <: AbstractPrimalEntropy{T}
   n::Int
   h::AbstractArray{T, 1}
   liftid::Int # 1 by default: the first cone of the lift
@@ -176,6 +195,37 @@ type PrimalEntropy{T<:Real} <: EntropicVector{T}
     new(n, h, 1)
   end
 
+end
+
+type PrimalEntropyLift{T<:Real} <: AbstractPrimalEntropy{T}
+  n::Array{Int,1}
+  h::AbstractArray{T, 1}
+  liftid::Array{Int,1}
+end
+
+PrimalEntropy{T<:Real}(h::AbstractArray{T, 1}) = PrimalEntropy{T}(h)
+
+function (*){T<:Real}(h1::AbstractPrimalEntropy{T}, h2::AbstractPrimalEntropy{T})
+  if length(h1.liftid) + length(h2.liftid) != length(union(IntSet(h1.liftid), IntSet(h2.liftid)))
+    error("liftids must differ")
+  end
+  PrimalEntropyLift([h1.n; h2.n], [h1.h; h2.h], [h1.liftid; h2.liftid])
+end
+
+Base.convert{T<:Real,S<:Real}(::Type{PrimalEntropy{T}}, h::PrimalEntropy{S}) = PrimalEntropy(Array{T}(h.h))
+
+function entropyfrompdf{n}(p::Array{Float64,n})
+  h = PrimalEntropy{Float64}(n)
+  for i = 0x1:ntodim(n)
+    cpy = copy(p)
+    for j = 1:n
+      if !myin(j, i)
+        cpy = reducedim(+, cpy, j, 0.)
+      end
+    end
+    h[i] = -sum(map(xlogx, cpy))
+  end
+  h
 end
 
 (-){T<:Real}(h::PrimalEntropy{T}) = PrimalEntropy{T}(-h.h)
@@ -273,6 +323,32 @@ function matussquare(n, i, j, k, l)
   dualentropywith(n, pos, [ij, K, L, ikl, jkl])
 end
 
+function constraint41()
+  matussquare(4,1,2,3,4)
+end
+function constraint42()
+  submodular(4,2,3,4)
+end
+function constraint43()
+  submodular(4,2,4,3) + submodular(4, 3,4,2)
+end
+function constraint4(s)
+  2*s * constraint41() + 2*constraint42() + s*(s+1)*(constraint43())
+end
+
+function constraint51()
+  matussquare(5,1,2,3,4) + submodular(5,3,4,5) + submodular(5,4,5,3)
+end
+function constraint52()
+  submodular(5,3,5,4)
+end
+function constraint53()
+  submodular(5,2,4,3) + submodular(5,3,4,2)
+end
+function constraint5(s)
+  2 * s * constraint51() + 2 * constraint52() + s * (s-1) * constraint53()
+end
+
 # Classical Entropic Vectors
 function cardminusentropy(n, I::Unsigned)
   h = PrimalEntropy{Int}(n)
@@ -325,15 +401,19 @@ function toTikz{T<:Real}(h::EntropicVector{T})
 end
 
 function Base.show{T<:Real}(io::IO, h::EntropicVector{T})
-  for l in h.n:-1:1
-    for i in 0b1:ntodim(h.n)
-      if card(i) == l
-        print(io, " $(bits(i)[end-h.n+1:end]):$(h[i])")
+  offset = 0
+  for i in eachindex(collect(h.n))
+    for l in h.n[i]:-1:1
+      for j in 0b1:ntodim(h.n[i])
+        if card(j) == l
+          print(io, " $(bits(j)[end-h.n[i]+1:end]):$(h.h[offset+j])")
+        end
+      end
+      if i != length(h.n) || l != 1
+        println(io)
       end
     end
-    if l != 1
-      println(io)
-    end
+    offset += ntodim(h.n[i])
   end
 end
 
@@ -403,11 +483,14 @@ function push!{T<:Real}(H::AbstractEntropicCone{T}, h::AbstractDualEntropy{T})
 end
 
 function equalonsubsetsof!{T<:Real}(H::EntropicConeLift{T}, id1, id2, S::Unsigned)
+  if S == 0x0
+    return
+  end
   nrows = (1<<(card(S)))-1
   A = zeros(T, nrows, size(H.A, 2))
   cur = 1
-  offset1 = sum(H.n[1:id1-1])
-  offset2 = sum(H.n[1:id2-1])
+  offset1 = sum(map(ntodim, H.n[1:(id1-1)]))
+  offset2 = sum(map(ntodim, H.n[1:(id2-1)]))
   for I in 0x1:S
     if subset(I, S)
       A[cur, offset1+I] = 1
@@ -416,7 +499,7 @@ function equalonsubsetsof!{T<:Real}(H::EntropicConeLift{T}, id1, id2, S::Unsigne
     end
   end
   for i = 1:nrows
-    push!(H.equalities, size(A, 1)+i)
+    push!(H.equalities, size(H.A, 1)+i)
   end
   H.A = [H.A; A]
 end
@@ -466,11 +549,56 @@ function polymatroidcone(n::Integer)
   EntropicCone(n, A)
 end
 
-function Base.in{T<:Real}(h::PrimalEntropy{T}, H::EntropicCone{T})
-  if h.n != H.n
-    error("The vector is not of the same dimension than the cone")
+function fullin{T<:Real}(h::AbstractPrimalEntropy{T}, H::AbstractEntropicCone{T})
+  for i in find(H.A*h.h .< 0)
+    println(i)
+    println(i in H.equalities)
+    #println(DualEntropyLift{T}(H.n, H.A[i,:], i in H.equalities))
   end
   reducedim(&, (H.A*h.h) .>= 0, true)[1]
+end
+function partialin{T<:Real}(h::AbstractPrimalEntropy{T}, H::AbstractEntropicCone{T})
+  A = zeros(T, sum(map(ntodim, h.n)), size(H.A, 2))
+  offseth = 0
+  offsetsH = [0; cumsum(map(ntodim, H.n))]
+  for i in eachindex(collect(h.n)) # use of collect in case h.n is scalar
+    for j = 1:ntodim(h.n[i])
+      A[offseth+j,offsetsH[h.liftid[i]]+j] = 1
+    end
+    offseth += ntodim(h.n[i])
+  end
+  linset = union(H.equalities, IntSet((size(H.A,1)+1):(size(H.A,1)+offseth)))
+  !isempty(CDD.InequalityDescription([H.A; A], [zeros(T, size(H.A,1)); -h.h], linset))
+end
+
+function Base.in{T<:Real}(h::PrimalEntropy{T}, H::EntropicCone{T})
+  if h.n > H.n
+    error("The vector has a higher dimension than the cone")
+  elseif h.n == H.n
+    fullin(h, H)
+  else
+    partialin(h, H)
+  end
+end
+
+function Base.in{T<:Real}(h::PrimalEntropyLift{T}, H::EntropicConeLift{T})
+  if length(h.n) > length(H.n) || reducedim(|, h.n .> H.n, 1, false)[1]
+    error("The vector has a higher dimension than the cone")
+  elseif h.n == H.n
+    fullin(h, H)
+  else
+    partialin(h, H)
+  end
+end
+
+function Base.in{T<:Real}(h::PrimalEntropy{T}, H::EntropicConeLift{T})
+  if h.liftid < 1 || h.liftid > length(H.n) || h.n > H.n[h.liftid]
+    error("The vector has a higher dimension than the cone")
+  elseif h.n == H.n
+    fullin(h, H)
+  else
+    partialin(h, H)
+  end
 end
 
 function redundant{T<:Real}(h::AbstractDualEntropy{T}, H::AbstractEntropicCone{T})
@@ -484,14 +612,9 @@ function redundant{T<:Real}(h::AbstractDualEntropy{T}, H::AbstractEntropicCone{T
   else
     linset = H.equalities
   end
-  ine = CDD.InequalityDescription([-H.A; -h.h'], zeros(T, row), linset)
+  ine = CDD.InequalityDescription([H.A; h.h'], zeros(T, row), linset)
   (isin, certificate) = CDD.redundant(ine, row)
   (isin, certificate)
-end
-
-function Base.in{T<:Real}(h::PrimalEntropy{T}, H::EntropicConeLift{T})
-  E = zeros(T, ntodim(n), ntodim(n))
-  true
 end
 
 function Base.in{T<:Real}(h::DualEntropy{T}, H::EntropicCone{T})
