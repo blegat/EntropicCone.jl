@@ -1,13 +1,14 @@
 module InformationTheory
 
 using CDD
+using Polyhedra
 
 import Base.setindex!, Base.*, Base.show, Base.getindex, Base.setdiff, Base.union, Base.promote_rule, Base.in, Base.-, Base.push!
 
 export xlogx, hb, hxi, g_p
 export singleton, set, card
 export EntropicVector
-export PrimalEntropy, cardminusentropy, cardentropy, invalidfentropy, matusrentropy, entropyfrompdf
+export PrimalEntropy, cardminusentropy, cardentropy, invalidfentropy, matusrentropy, entropyfrompdf, subpdf
 export DualEntropy, DualEntropyLift, nonnegative, nondecreasing, submodular, submodulareq, matussquare, zhangyeunginequality, constraint41, constraint42, constraint43, constraint4, constraint51, constraint52, constraint53, constraint5
 export EntropicCone, EntropicConeLift, polymatroidcone, redundant, equalonsubsetsof!, equalvariable!
 
@@ -36,9 +37,10 @@ function hb(p)
   return hb(1, p)
 end
 
-function hxi(p)
+function hxi(p::Real)
   #return [hb(2*p) ones(length(p),1) hb(2*p)+1]
-  [hb(2*p) ones(length(p),1) hb(2*p)+1 hb(1/2+p) 2*hb(1/2,p)-2*p hb(1/2,p)+1/2 hb(2*p)+1 hb(p) hb(2*p)+2*p hb(1/2,p)+1/2 hb(2*p)+1 hb(1/2,p)+1/2 hb(2*p)+1 hb(2*p)+1 hb(2*p)+1]'
+  PrimalEntropy([hb(2*p); 1; hb(2*p)+1; hb(1/2+p); 2*hb(1/2,p)-2*p; hb(1/2,p)+1/2; hb(2*p)+1; hb(p); hb(2*p)+2*p; hb(1/2,p)+1/2; hb(2*p)+1; hb(1/2,p)+1/2; hb(2*p)+1; hb(2*p)+1; hb(2*p)+1], 1)
+  #PrimalEntropy([hb(2*p); ones(length(p),1); hb(2*p)+1; hb(1/2+p); 2*hb(1/2,p)-2*p; hb(1/2,p)+1/2; hb(2*p)+1; hb(p); hb(2*p)+2*p; hb(1/2,p)+1/2; hb(2*p)+1; hb(1/2,p)+1/2; hb(2*p)+1; hb(2*p)+1; hb(2*p)+1], 1)
 end
 
 function g_p(p)
@@ -240,16 +242,22 @@ end
 
 Base.convert{T<:Real,S<:Real}(::Type{PrimalEntropy{T}}, h::PrimalEntropy{S}) = PrimalEntropy(Array{T}(h.h))
 
+function subpdf{n}(p::Array{Float64,n}, S::Unsigned)
+  cpy = copy(p)
+  for j = 1:n
+    if !myin(j, S)
+      cpy = reducedim(+, cpy, j, 0.)
+    end
+  end
+  cpy
+end
+
+subpdf{n}(p::Array{Float64,n}, s::Signed) = subpdf(p, set(s))
+
 function entropyfrompdf{n}(p::Array{Float64,n})
   h = PrimalEntropy{Float64}(n, 1)
   for i = 0x1:ntodim(n)
-    cpy = copy(p)
-    for j = 1:n
-      if !myin(j, i)
-        cpy = reducedim(+, cpy, j, 0.)
-      end
-    end
-    h[i] = -sum(map(xlogx, cpy))
+    h[i] = -sum(map(xlogx, subpdf(p, i)))
   end
   h
 end
@@ -448,7 +456,7 @@ function Base.show{T<:Real}(io::IO, h::EntropicVector{T})
           if val == 0
             print(io, " $(bitmap):$(val)")
           else
-            print_with_color(:red, io, " $(bitmap):$(val)")
+            print_with_color(:blue, io, " $(bitmap):$(val)")
           end
         end
       end
@@ -503,6 +511,8 @@ type EntropicConeLift{T<:Real} <: AbstractEntropicCone{T}
 end
 
 EntropicConeLift{T<:Real}(n::Array{Int,1}, A::Array{T,2}) = EntropicConeLift(n, A, IntSet([]))
+
+Base.convert{S<:Real,T<:Real}(::Type{EntropicConeLift{S}}, H::EntropicConeLift{T}) = EntropicConeLift{S}(H.n, Array{S}(H.A), H.equalities)
 
 Base.getindex{T<:Real}(H::EntropicConeLift{T}, i) = DualEntropyLift(H.n, H.A[i,:], i in H.equalities)
 
@@ -627,6 +637,7 @@ function fullin{T<:Real}(h::AbstractPrimalEntropy{T}, H::AbstractEntropicCone{T}
     println(i)
     println(i in H.equalities)
     #println(DualEntropyLift{T}(H.n, H.A[i,:], i in H.equalities))
+    println(H[i])
   end
   reducedim(&, (H.A*h.h) .>= 0, true)[1]
 end
@@ -704,5 +715,7 @@ end
 function Base.in{T<:Real}(h::DualEntropy{T}, H::EntropicConeLift{T})
   Base.in(DualEntropyLift{T}(h, length(H.n)), H)
 end
+
+include("visualize.jl")
 
 end # module

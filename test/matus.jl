@@ -81,13 +81,13 @@ eq5_12 = eq5(1,2)
 @test eq5_12 in G
 end
 
+  if false
 for i in 0:10
   s = 1 << i
   println(s)
-  if false
     @test (constraint5(s) in G)
-  end
 end
+  end
 equalvariable!(G, 1, 2, 5)
 if false
 for s in 0:5
@@ -129,9 +129,113 @@ r5 = PrimalEntropy{Int}(entropyfrompdf(p5))
 #println(invalidfentropy(12) in G)
 end
 
+if false
 @test matusrentropy(1,14) in G
 @test matusrentropy(1,23) in G
 @test matusrentropy(2,4) in G
 @test matusrentropy(1,24) in G
 @test matusrentropy(2,3) in G
 @test !(invalidfentropy(12) in G)
+end
+
+println("FLOAT")
+function pdf4(p)
+  x = zeros(Float64,2,2,2,2)
+  x[1,1,1,2] = p
+  x[1,2,1,1] = p
+  x[2,1,1,1] = 0.5 - p
+  x[2,2,2,1] = 0.5 - p
+  x
+end
+function pdf05(p)
+  x = zeros(Float64,2,2,2,2,2)
+  x[1,1,1,2,1] = p
+  x[1,2,1,1,2] = p
+  x[2,1,1,1,1] = 0.5 - p
+  x[2,2,2,1,2] = 0.5 - p
+  x
+end
+
+function safe_div(x, y)
+  if x == 0
+    0
+  else
+    x / y
+  end
+end
+
+hxi04 = entropyfrompdf(pdf4(0))
+pdf0 = pdf05(0)
+pdf0_345 = subpdf(pdf0, 345)
+pdf0_1234 = subpdf(pdf0, 1234)
+pdf0_34 = subpdf(pdf0, 34)
+pdf0_45 = subpdf(pdf0, 45)
+pdf0_4 = subpdf(pdf0, 4)
+pdf1 = zeros(Float64, 2, 2, 2, 2, 2)
+pdf2 = zeros(Float64, 2, 2, 2, 2, 2)
+for x1 = 1:2
+  for x2 = 1:2
+    for x3 = 1:2
+      for x4 = 1:2
+        for x5 = 1:2
+          pdf1[x1,x2,x3,x4,x5] = safe_div(pdf0_345[1,1,x3,x4,x5] * pdf0_1234[x1,x2,x3,x4,1], pdf0_34[1,1,x3,x4,1])
+          pdf2[x1,x2,x3,x4,x5] = safe_div(pdf0_45[1,1,1,x4,x5] * pdf0_1234[x1,x2,x3,x4,1], pdf0_4[1,1,1,x4,1])
+        end
+      end
+    end
+  end
+end
+println(pdf0)
+println(pdf1)
+println(pdf2)
+
+println("1234")
+println(subpdf(pdf1, 1234))
+println(subpdf(pdf2, 1234))
+
+println("2345")
+println(subpdf(pdf1, 2345))
+println(subpdf(pdf2, 2345))
+
+hxi05 = entropyfrompdf(pdf0)
+hxi15 = entropyfrompdf(pdf1)
+hxi15.liftid = 2
+hxi25 = entropyfrompdf(pdf2)
+hxi25.liftid = 3
+
+hxi5 = (hxi05 * hxi15) * hxi25
+
+@test hxi04 == hxi(0)
+@test hxi05[1:15] == hxi(0)
+@test hxi5[1:15] == hxi(0)
+
+Gf = EntropicConeLift{Float64}(G)
+
+println(hxi5)
+println(hxi5 in Gf)
+
+if false
+println(typeof(hxi(0)))
+println(hxi(0))
+println(g_p(0))
+println(hxi(0) in Gf)
+println(g_p(0) in Gf)
+function mytest(h)
+  println("h = $h")
+  println(log(2) + 2*h*log(2) - 1/2 * hb(2*h))
+  println(1 + 2*h - 1/2 * hb(2*h))
+  println(hxi(h) in Gf)
+  println(g_p(h) in Gf)
+end
+mytest(.000001)
+mytest(.00001)
+mytest(.0001)
+mytest(.001)
+mytest(.01)
+mytest(.1)
+end
+#println(g_p(.00001) in Gf)
+#println(g_p(.0001) in Gf)
+#println(g_p(.001) in Gf)
+#println(g_p(.01) in Gf)
+#println(g_p(.1) in Gf)
