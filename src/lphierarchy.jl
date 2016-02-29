@@ -1,4 +1,4 @@
-function enforceadhesivity{T<:Real}(h::EntropicCone{T})
+function enforceadhesivity{ET<:Real}(h::EntropicCone{ET})
   lift = h
   last = 1
   for S in 0x1:ntodim(h.n)
@@ -14,4 +14,7 @@ function enforceadhesivity{T<:Real}(h::EntropicCone{T})
       end
     end
   end
+  unlift(lift)
 end
+
+export enforceadhesivity
