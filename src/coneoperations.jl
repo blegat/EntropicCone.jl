@@ -1,22 +1,9 @@
 import Polyhedra.polyhedron
+export getextremerays
 
-function polyhedron(h::AbstractEntropicCone, lib::PolyhedraLibrary=CDDLibrary(:float))
-  ine = InequalityDescription(h.A, zeros(eltype(h.A), size(h.A, 1)), h.equalities)
-  polyhedron(ine, lib)
-end
-
-function EntropicCone(p::Polyhedron)
-  ine = getinequalities(p)
-  if sum(abs(ineunlift.b)) > 0
-    error("b is not zero-valued")
-  end
-  EntropicCone(size(ine.A, 2), ine.A, ine.linset)
-end
-
-function unlift{T<:Real}(h::EntropicConeLift{T})
-  poly = polyhedron(h)
-  eliminate!(poly, IntSet([(h.n[1]+1):sum(h.n)]))
-  EntropicCone(poly)
+function unlift{N}(h::EntropicConeLift{N})
+  poly = getpoly(h)
+  EntropicCone(eliminate(poly, IntSet([(ntodim(h.n[1])+1):N])))
 end
 
 function fullin{T<:Real}(h::AbstractPrimalEntropy{T}, H::AbstractEntropicCone{T})
@@ -29,7 +16,7 @@ function fullin{T<:Real}(h::AbstractPrimalEntropy{T}, H::AbstractEntropicCone{T}
   reducedim(&, (H.A*h.h) .>= 0, true)[1]
 end
 function partialin{T<:Real}(h::AbstractPrimalEntropy{T}, H::AbstractEntropicCone{T})
-  A = zeros(T, sum(map(ntodim, h.n)), size(H.A, 2))
+  A = zeros(T, sum(ntodim(h.n)), size(H.A, 2))
   offseth = 0
   offsetsH = [0; cumsum(map(ntodim, H.n))]
   for i in eachindex(collect(h.n)) # use of collect in case h.n is scalar

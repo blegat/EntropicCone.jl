@@ -1,13 +1,16 @@
-export EntropicCone, EntropicConeLift, polymatroidcone, redundant, equalonsubsetsof!, equalvariable!
+export EntropicCone, polymatroidcone, redundant, getinequalities, getextremerays
 
 # Entropic Cone
 
-abstract AbstractEntropicCone{T<:Real}
+abstract AbstractEntropicCone{N, T<:Real}
 
-type EntropicCone{T<:Real} <: AbstractEntropicCone{T}
+type EntropicCone{N, T<:Real} <: AbstractEntropicCone{N, T}
   n::Int
-  A::Matrix{T}
-  equalities::IntSet
+  poly::Polyhedron{N, T}
+
+  function EntropicCone(p::Polyhedron{N, T})
+    new(fulldim(p), p)
+  end
 
   function EntropicCone(n::Int, A::Array{T,2}, equalities::IntSet)
     if ntodim(n) != size(A, 2)
@@ -16,110 +19,64 @@ type EntropicCone{T<:Real} <: AbstractEntropicCone{T}
     if !isempty(equalities) && last(equalities) > size(A, 1)
       error("Equalities should range from 1 to the number of rows of A")
     end
-    new(n, A, equalities)
+    ine = InequalityDescription(A, zeros(T, size(A, 1)), equalities)
+    new(n, polyhedron(ine))
   end
 
 end
 
-EntropicCone{T<:Real}(n::Int, A::Array{T,2}) = EntropicCone{T}(n, A, IntSet([]))
+EntropicCone{T<:Real}(n::Int, A::Array{T,2}) = EntropicCone{size(A, 2), T}(n, A, IntSet([]))
 
-Base.getindex{T<:Real}(H::EntropicCone{T}, i) = DualEntropy(H.n, H.A[i,:], i in H.equalities)
+#Base.getindex{T<:Real}(H::EntropicCone{T}, i) = DualEntropy(H.n, H.A[i,:], i in H.equalities) # FIXME
 
-Base.copy{T<:Real}(h::EntropicCone{T}) = EntropicCone{T}(h.n, copy(h.A), copy(h.equalities))
+Base.copy{T<:Real}(h::EntropicCone{size(A, 2), T}) = EntropicCone{size(A, 2), T}(h.n, copy(h.poly))
 
-type EntropicConeLift{T<:Real} <: AbstractEntropicCone{T}
-  n::Vector{Int}
-  A::Matrix{T}
-  equalities::IntSet
-
-  function EntropicConeLift(n::Array{Int,1}, A::Array{T,2}, equalities::IntSet)
-    if sum(map(ntodim, n)) != size(A, 2)
-      error("The dimensions in n does not agree with the number of columns of A")
-    end
-    if !isempty(equalities) && last(equalities) > size(A, 1)
-      error("Equalities should range from 1 to the number of rows of A")
-    end
-    new(n, A, equalities)
-  end
-
+function getpoly(h::AbstractEntropicCone)
+  get(h.poly)
 end
 
-EntropicConeLift{T<:Real}(n::Array{Int,1}, A::Array{T,2}) = EntropicConeLift(n, A, IntSet([]))
-
-Base.convert{S<:Real,T<:Real}(::Type{EntropicConeLift{S}}, H::EntropicConeLift{T}) = EntropicConeLift{S}(H.n, Array{S}(H.A), H.equalities)
-
-Base.getindex{T<:Real}(H::EntropicConeLift{T}, i) = DualEntropyLift(H.n, H.A[i,:], i in H.equalities)
-
-Base.convert{T<:Real}(::Type{EntropicConeLift{T}}, x::EntropicCone{T}) = EntropicConeLift([x.n], x.A)
-
-promote_rule{T<:Real}(::Type{EntropicConeLift{T}}, ::Type{EntropicCone{T}}) = EntropicConeLift{T}
-
-function (*){T<:Real}(x::AbstractEntropicCone{T}, y::AbstractEntropicCone{T})
-  A = [x.A zeros(T, size(x.A, 1), size(y.A, 2)); zeros(T, size(y.A, 1), size(x.A, 2)) y.A]
-  equalities = copy(x.equalities)
-  for eq in y.equalities
-    push!(equalities, size(x.A, 1) + eq)
-  end
-  EntropicConeLift{T}([x.n; y.n], A, equalities)
+function fulldim(h::AbstractEntropicCone)
+  fulldim(h.poly)
 end
 
-function push!{T<:Real}(H::AbstractEntropicCone{T}, h::AbstractDualEntropy{T})
+function getinequalities(h::EntropicCone)
+  removeredundantinequalities!(getpoly(h))
+  ine = getinequalities(getpoly(h))
+  if sum(abs(ine.b)) > 0
+    error("Error: b is not zero-valued.")
+  end
+  [DualEntropy(ine.A[i,:], i in ine.linset) for i in size(ine.A, 1)]
+end
+
+function getextremerays(h::EntropicCone)
+  removeredundantgenerators!(getpoly(h))
+  ext = getgenerators(getpoly(h))
+  splitvertexrays!(ext)
+  if size(ext.V, 1) > 0
+    error("Error: There are vertices.")
+  end
+  [PrimalEntropy(ext.R[i,:]) for i in size(ext.R, 1)]
+end
+
+function push!{N, T<:Real}(H::AbstractEntropicCone{N, T}, h::AbstractDualEntropy{N, T})
   if H.n != h.n
     error("The dimension of the cone and entropy differ")
   end
-  H.A = [H.A; h.h']
-  if h.equality
-    push!(H.equalities, size(H.A, 1))
-  end
+  push!(H.poly, InequalityDescription{T}(h))
 end
 
-function equalonsubsetsof!{T<:Real}(H::EntropicConeLift{T}, id1, id2, S::Unsigned)
-  if S == 0x0
-    return
+function Base.intersect!(h1::AbstractEntropicCone, h2::AbstractEntropicCone)
+  if h1.n != h2.n
+    error("The dimension for the cones differ")
   end
-  nrows = (1<<(card(S)))-1
-  A = zeros(T, nrows, size(H.A, 2))
-  cur = 1
-  offset1 = sum(map(ntodim, H.n[1:(id1-1)]))
-  offset2 = sum(map(ntodim, H.n[1:(id2-1)]))
-  for I in 0x1:S
-    if subset(I, S)
-      A[cur, offset1+I] = 1
-      A[cur, offset2+I] = -1
-      cur += 1
-    end
-  end
-  for i in 1:nrows
-    push!(H.equalities, size(H.A, 1)+i)
-  end
-  H.A = [H.A; A]
+  intersect!(getpoly(h1), getpoly(h2))
 end
-equalonsubsetsof!{T<:Real}(H::EntropicConeLift{T}, id1, id2, s::Signed) = equalonsubsetsof!(H, id1, id2, set(s))
 
-function equalvariable!{T<:Real}(H::EntropicConeLift{T}, id::Integer, i::Signed, j::Signed)
-  if id < 1 || id > length(H.n) || min(i,j) < 1 || max(i,j) > H.n[id]
-    error("invalid")
+function Base.intersect(h1::AbstractEntropicCone, h2::AbstractEntropicCone)
+  if h1.n != h2.n
+    error("The dimension for the cones differ")
   end
-  if i == j
-    warning("useless")
-    return
-  end
-  nrows = 1 << (H.n[id]-1)
-  A = zeros(T, nrows, size(H.A, 2))
-  offset = sum(map(ntodim, H.n[1:(id-1)]))
-  cur = 1
-  for S in 0x1:ntodim(H.n[id])
-    if myin(i, S)
-      A[cur, offset+S] = 1
-      Q = union(setdiff(S, set(i)), set(j))
-      A[cur, offset+Q] = -1
-      cur += 1
-    end
-  end
-  for i in 1:nrows
-    push!(H.equalities, size(H.A, 1)+i)
-  end
-  H.A = [H.A; A]
+  typeof(h1)(h1.n, intersect(getpoly(h1), getpoly(h2)))
 end
 
 function polymatroidcone(n::Integer)
