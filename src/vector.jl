@@ -1,6 +1,6 @@
 export EntropicVector
-export PrimalEntropy, cardminusentropy, cardentropy, invalidfentropy, matusrentropy, entropyfrompdf, subpdf
-export DualEntropy, DualEntropyLift, nonnegative, nondecreasing, submodular, submodulareq, matussquare, zhangyeunginequality, constraint41, constraint42, constraint43, constraint4, constraint51, constraint52, constraint53, constraint5
+export PrimalEntropy, cardminusentropy, cardentropy, invalidfentropy, matusrentropy, entropyfrompdf, subpdf, toTikz
+export DualEntropy, DualEntropyLift, nonnegative, nondecreasing, submodular, submodulareq, ingleton, zhangyeunginequality, constraint41, constraint42, constraint43, constraint4, constraint51, constraint52, constraint53, constraint5
 
 # Entropic Vector
 
@@ -22,12 +22,12 @@ end
 
 abstract EntropicVector{N, T<:Real} <: AbstractArray{T, 1}
 
-Base.size{N}(h::EntropicVector{N}) = N
-Base.linearindexing{T<:Real}(::Type{EntropicVector{T}}) = Base.LinearFast()
+Base.size{N}(h::EntropicVector{N}) = (N,)
+Base.linearindexing(::Type{EntropicVector}) = Base.LinearFast()
 #Base.getindex(h::EntropicVector, i::Int) = h.h[i]
 #Base.getindex{T}(h::EntropicVector, i::AbstractArray{T,1}) = EntropicVector(h.h[i])
 Base.getindex(h::EntropicVector, i) = h.h[i]
-Base.setindex!{N, T<:Real}(h::EntropicVector{N, T}, v::T, i::Int) = h.h[i] = v
+Base.setindex!{N, T}(h::EntropicVector{N, T}, v::T, i::Int) = h.h[i] = v
 
 #function *(x, h::EntropicVector)
 #  EntropicVector(x * h.h)
@@ -72,13 +72,33 @@ end
 
 DualEntropy{T<:Real}(h::AbstractArray{T, 1}, liftid::Int=1, equality::Bool=false) = DualEntropy{length(h), T}(h, liftid, equality)
 
+function Base.convert{N, T<:Real}(::Type{InequalityDescription{T}}, h::Vector{DualEntropy{N, T}})
+  linset = IntSet([])
+  m = length(h)
+  A = Matrix{T}(m, N)
+  for i in 1:m
+    A[i,:] = -h[i].h
+    if h[i].equality
+      push!(linset, i)
+    end
+  end
+  InequalityDescription(A, zeros(T, m), linset)
+end
 function Base.convert{N, T<:Real}(::Type{InequalityDescription{T}}, h::DualEntropy{N, T})
   linset = IntSet([])
-  if equality
+  if h.equality
     push!(linset, 1)
   end
-  InequalityDescription(h.h', zeros(T, 1), linset)
+  InequalityDescription(-h.h', zeros(T, 1), linset)
 end
+
+function setequality(h::DualEntropy, eq::Bool)
+  h.equality = eq
+  h
+end
+
+#Base.convert{N, T}(::Type{InequalityDescription{T}}, h::DualEntropy{N, T}) = Base.convert(InequalityDescription{T}, [h])
+#Doesn't work
 
 type DualEntropyLift{N, T<:Real} <: AbstractDualEntropy{N, T}
   n::Array{Int,1}
@@ -246,7 +266,7 @@ function nondecreasing(n, S::Unsigned, T::Unsigned)
   dualentropywith(n, [T], [S])
 end
 function nondecreasing(n, s::Signed, t::Signed)
-  nonnegative(n, set(s), set(t))
+  nondecreasing(n, set(s), set(t))
 end
 
 function submodular(n, S::Unsigned, T::Unsigned, I::Unsigned)
@@ -279,7 +299,7 @@ function zhangyeunginequality(i::Signed, j::Signed, k::Signed, l::Signed)
 end
 zhangyeunginequality() = zhangyeunginequality(1, 2, 3, 4)
 
-function matussquare(n, i, j, k, l)
+function ingleton(n, i, j, k, l)
   pos = []
   I = singleton(i)
   J = singleton(j)
@@ -298,8 +318,14 @@ function matussquare(n, i, j, k, l)
   dualentropywith(n, pos, [ij, K, L, ikl, jkl])
 end
 
+function ingleton(i, j)
+  x = 1:4
+  kl = x[(x.!=i) & (x.!=j)]
+  ingleton(4, i, j, kl[1], kl[2])
+end
+
 function constraint41()
-  matussquare(4,1,2,3,4)
+  ingleton(1,2)
 end
 function constraint42()
   submodular(4,2,3,4)
@@ -312,7 +338,7 @@ function constraint4(s)
 end
 
 function constraint51()
-  matussquare(5,1,2,3,4) + submodular(5,3,4,5) + submodular(5,4,5,3)
+  ingleton(5,1,2,3,4) + submodular(5,3,4,5) + submodular(5,4,5,3)
 end
 function constraint52()
   submodular(5,3,5,4)
@@ -371,11 +397,21 @@ end
 
 # Manipulation
 
-function toTikz{T<:Real}(h::EntropicVector{T})
-  print(io, join(h.h, " "))
+function toTikz(h::EntropicVector)
+  dens = [el.den for el in h.h]
+  hlcm = reduce(lcm, 1, dens)
+  x = h.h * hlcm
+  println(join(Vector{Int}(x), " "))
 end
 
-function Base.show{T<:Real}(io::IO, h::EntropicVector{T})
+function toTikz{T}(h::EntropicVector{Rational{T}})
+  x = Vector{Real}(h.h)
+  i = h.h .== round(h.h)
+  x[i] = Vector{Int}(h.h[i])
+  println(join(x, " "))
+end
+
+function Base.show(io::IO, h::EntropicVector)
   offset = 0
   for i in eachindex(collect(h.n))
     for l in h.n[i]:-1:1

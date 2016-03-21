@@ -1,4 +1,4 @@
-export EntropicCone, polymatroidcone, redundant, getinequalities, getextremerays
+export EntropicCone, polymatroidcone, redundant, getinequalities, getextremerays, tight!
 
 # Entropic Cone
 
@@ -8,8 +8,15 @@ type EntropicCone{N, T<:Real} <: AbstractEntropicCone{N, T}
   n::Int
   poly::Polyhedron{N, T}
 
+  function EntropicCone(n::Int, p::Polyhedron{N, T})
+    if ntodim(n) != N
+      error("The number of variables does not match the dimension of the polyhedron")
+    end
+    new(n, p)
+  end
+
   function EntropicCone(p::Polyhedron{N, T})
-    new(fulldim(p), p)
+    new(dimton(N), p)
   end
 
   function EntropicCone(n::Int, A::Array{T,2}, equalities::IntSet)
@@ -19,64 +26,65 @@ type EntropicCone{N, T<:Real} <: AbstractEntropicCone{N, T}
     if !isempty(equalities) && last(equalities) > size(A, 1)
       error("Equalities should range from 1 to the number of rows of A")
     end
-    ine = InequalityDescription(A, zeros(T, size(A, 1)), equalities)
-    new(n, polyhedron(ine))
+    ine = InequalityDescription(-A, zeros(T, size(A, 1)), equalities)
+    new(n, CDDPolyhedron{N, T}(ine))
   end
 
 end
 
-EntropicCone{T<:Real}(n::Int, A::Array{T,2}) = EntropicCone{size(A, 2), T}(n, A, IntSet([]))
+EntropicCone{T<:AbstractFloat}(n::Int, A::Matrix{T}) = EntropicCone{size(A, 2), Float64}(n, Matrix{Float64}(A), IntSet([]))
+EntropicCone{T<:Real}(n::Int, A::Matrix{T}) = EntropicCone{size(A, 2), Rational{BigInt}}(n, Matrix{Rational{BigInt}}(A), IntSet([]))
 
 #Base.getindex{T<:Real}(H::EntropicCone{T}, i) = DualEntropy(H.n, H.A[i,:], i in H.equalities) # FIXME
 
-Base.copy{T<:Real}(h::EntropicCone{size(A, 2), T}) = EntropicCone{size(A, 2), T}(h.n, copy(h.poly))
-
-function getpoly(h::AbstractEntropicCone)
-  get(h.poly)
-end
+Base.copy{N, T<:Real}(h::EntropicCone{N, T}) = EntropicCone{N, T}(h.n, copy(h.poly))
 
 function fulldim(h::AbstractEntropicCone)
   fulldim(h.poly)
 end
 
 function getinequalities(h::EntropicCone)
-  removeredundantinequalities!(getpoly(h))
-  ine = getinequalities(getpoly(h))
+  removeredundantinequalities!(h.poly)
+  ine = getinequalities(h.poly)
   if sum(abs(ine.b)) > 0
     error("Error: b is not zero-valued.")
   end
-  [DualEntropy(ine.A[i,:], i in ine.linset) for i in size(ine.A, 1)]
+  [DualEntropy(ine.A[i,:], i in ine.linset) for i in 1:size(ine.A, 1)]
 end
 
 function getextremerays(h::EntropicCone)
-  removeredundantgenerators!(getpoly(h))
-  ext = getgenerators(getpoly(h))
+  removeredundantgenerators!(h.poly)
+  ext = getgenerators(h.poly)
   splitvertexrays!(ext)
   if size(ext.V, 1) > 0
     error("Error: There are vertices.")
   end
-  [PrimalEntropy(ext.R[i,:]) for i in size(ext.R, 1)]
+  [PrimalEntropy(ext.R[i,:]) for i in 1:size(ext.R, 1)]
 end
 
-function push!{N, T<:Real}(H::AbstractEntropicCone{N, T}, h::AbstractDualEntropy{N, T})
+function push!{N, T, S}(H::AbstractEntropicCone{N, T}, h::AbstractDualEntropy{N, S})
   if H.n != h.n
     error("The dimension of the cone and entropy differ")
   end
-  push!(H.poly, InequalityDescription{T}(h))
+  push!(H.poly, InequalityDescription{S}(h))
 end
+function push!{N, T, S}(H::EntropicCone{N, T}, h::Vector{DualEntropy{N, S}})
+  push!(H.poly, InequalityDescription{S}(h))
+end
+
 
 function Base.intersect!(h1::AbstractEntropicCone, h2::AbstractEntropicCone)
   if h1.n != h2.n
     error("The dimension for the cones differ")
   end
-  intersect!(getpoly(h1), getpoly(h2))
+  intersect!(h1.poly, h2.poly)
 end
 
 function Base.intersect(h1::AbstractEntropicCone, h2::AbstractEntropicCone)
   if h1.n != h2.n
     error("The dimension for the cones differ")
   end
-  typeof(h1)(h1.n, intersect(getpoly(h1), getpoly(h2)))
+  typeof(h1)(h1.n, intersect(h1.poly, h2.poly))
 end
 
 function polymatroidcone(n::Integer)
@@ -121,4 +129,11 @@ function polymatroidcone(n::Integer)
     end
   end
   EntropicCone(n, A)
+end
+
+function tight!(h::EntropicCone)
+  # FIXME it doesn't work if I do not specify the type
+  # The type is DualEntropy{N, Int} with N unspecified :(
+  tightness = DualEntropy{Int(ntodim(h.n)), Int}[setequality(nondecreasing(h.n, setdiff(fullset(h.n), set(i)), set(i)), true) for i in 1:h.n]
+  push!(h, tightness)
 end

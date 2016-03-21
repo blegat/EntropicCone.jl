@@ -1,4 +1,4 @@
-export singleton, set, card
+export singleton, set, card, fullset
 
 # Set Manipulation
 # function subsets(S)
@@ -35,6 +35,10 @@ end
 
 function singleton(i::Integer)
   0b1 << (i-1)
+end
+
+function fullset(n::Integer)
+  (0x1 << n) - 0x1
 end
 
 function set(i::Integer)
