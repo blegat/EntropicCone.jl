@@ -1,7 +1,6 @@
-export matuscsirmaztetra
+export matuscsirmaztetra!
 
-function matuscsirmaztetra(h::EntropicCone{15}, tetravertices::Matrix=[1 1 1;1 -1 -1; -1 1 -1; -1 -1 1]')
-  h = copy(h)
+function matuscsirmaztetra!(h::EntropicCone{15}, tetravertices::Matrix=[1 1 1;1 -1 -1; -1 1 -1; -1 -1 1]')
   tight!(h)
   push!(h, -ingleton(1, 2))
   # er = getextremerays(h)
