@@ -72,7 +72,7 @@ end
 
 DualEntropy{T<:Real}(h::AbstractArray{T, 1}, liftid::Int=1, equality::Bool=false) = DualEntropy{length(h), T}(h, liftid, equality)
 
-function Base.convert{N, T<:Real}(::Type{InequalityDescription{T}}, h::Vector{DualEntropy{N, T}})
+function Base.convert{N, T<:Real}(::Type{HRepresentation{T}}, h::Vector{DualEntropy{N, T}})
   linset = IntSet([])
   m = length(h)
   A = Matrix{T}(m, N)
@@ -82,14 +82,14 @@ function Base.convert{N, T<:Real}(::Type{InequalityDescription{T}}, h::Vector{Du
       push!(linset, i)
     end
   end
-  InequalityDescription(A, zeros(T, m), linset)
+  HRepresentation(A, zeros(T, m), linset)
 end
-function Base.convert{N, T<:Real}(::Type{InequalityDescription{T}}, h::DualEntropy{N, T})
+function Base.convert{N, T<:Real}(::Type{HRepresentation{T}}, h::DualEntropy{N, T})
   linset = IntSet([])
   if h.equality
     push!(linset, 1)
   end
-  InequalityDescription(-h.h', zeros(T, 1), linset)
+  HRepresentation(-h.h', zeros(T, 1), linset)
 end
 
 function setequality(h::DualEntropy, eq::Bool)
@@ -97,7 +97,7 @@ function setequality(h::DualEntropy, eq::Bool)
   h
 end
 
-#Base.convert{N, T}(::Type{InequalityDescription{T}}, h::DualEntropy{N, T}) = Base.convert(InequalityDescription{T}, [h])
+#Base.convert{N, T}(::Type{HRepresentation{T}}, h::DualEntropy{N, T}) = Base.convert(HRepresentation{T}, [h])
 #Doesn't work
 
 type DualEntropyLift{N, T<:Real} <: AbstractDualEntropy{N, T}

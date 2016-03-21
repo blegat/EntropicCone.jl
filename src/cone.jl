@@ -26,7 +26,7 @@ type EntropicCone{N, T<:Real} <: AbstractEntropicCone{N, T}
     if !isempty(equalities) && last(equalities) > size(A, 1)
       error("Equalities should range from 1 to the number of rows of A")
     end
-    ine = InequalityDescription(-A, zeros(T, size(A, 1)), equalities)
+    ine = HRepresentation(-A, zeros(T, size(A, 1)), equalities)
     new(n, CDDPolyhedron{N, T}(ine))
   end
 
@@ -66,10 +66,10 @@ function push!{N, T, S}(H::AbstractEntropicCone{N, T}, h::AbstractDualEntropy{N,
   if H.n != h.n
     error("The dimension of the cone and entropy differ")
   end
-  push!(H.poly, InequalityDescription{S}(h))
+  push!(H.poly, HRepresentation{S}(h))
 end
 function push!{N, T, S}(H::EntropicCone{N, T}, h::Vector{DualEntropy{N, S}})
-  push!(H.poly, InequalityDescription{S}(h))
+  push!(H.poly, HRepresentation{S}(h))
 end
 
 

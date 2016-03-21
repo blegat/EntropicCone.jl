@@ -26,7 +26,7 @@ function partialin{T<:Real}(h::AbstractPrimalEntropy{T}, H::AbstractEntropicCone
     offseth += ntodim(h.n[i])
   end
   linset = union(H.equalities, IntSet((size(H.A,1)+1):(size(H.A,1)+offseth)))
-  !isempty(CDD.InequalityDescription([-H.A; A], [zeros(T, size(H.A,1)); h.h], linset))
+  !isempty(CDD.HRepresentation([-H.A; A], [zeros(T, size(H.A,1)); h.h], linset))
 end
 
 function Base.in{T<:Real}(h::PrimalEntropy{T}, H::EntropicCone{T})
@@ -65,7 +65,7 @@ function redundant{T<:Real}(h::AbstractDualEntropy{T}, H::AbstractEntropicCone{T
     error("The entropic vector should have the same dimension than the cone")
   end
   row = size(H.A, 1) + 1
-  ine = CDD.InequalityDescription([-H.A; -h.h'], zeros(T, row), H.equalities)
+  ine = CDD.HRepresentation([-H.A; -h.h'], zeros(T, row), H.equalities)
   (isin, certificate) = CDD.redundant(ine, row)
   (isin, certificate)
 end
