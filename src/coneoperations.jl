@@ -1,21 +1,17 @@
 import Polyhedra.polyhedron
-export getextremerays
+# Fullin also provides a certificate so it is interesting so it is exported
+export getextremerays, fullin
 
 function unlift{N}(h::EntropicConeLift{N})
   poly = getpoly(h)
   EntropicCone(eliminate(poly, IntSet([(ntodim(h.n[1])+1):N])))
 end
 
-function fullin{T<:Real}(h::AbstractPrimalEntropy{T}, H::AbstractEntropicCone{T})
-  for i in find(H.A*h.h .< 0)
-    println(i)
-    println(i in H.equalities)
-    #println(DualEntropyLift{T}(H.n, H.A[i,:], i in H.equalities))
-    println(H[i])
-  end
-  reducedim(&, (H.A*h.h) .>= 0, true)[1]
+function fullin{N}(h::AbstractPrimalEntropy{N}, H::AbstractEntropicCone{N})
+  isredundantgenerator(H.poly, h.h, false) # false because it is a ray and not a vertex
+  #reducedim(&, (H.A*h.h) .>= 0, true)[1]
 end
-function partialin{T<:Real}(h::AbstractPrimalEntropy{T}, H::AbstractEntropicCone{T})
+function partialin{NE, NC, S, T}(h::AbstractPrimalEntropy{NE, S}, H::AbstractEntropicCone{NC, T})
   A = zeros(T, sum(ntodim(h.n)), size(H.A, 2))
   offseth = 0
   offsetsH = [0; cumsum(map(ntodim, H.n))]
@@ -25,67 +21,55 @@ function partialin{T<:Real}(h::AbstractPrimalEntropy{T}, H::AbstractEntropicCone
     end
     offseth += ntodim(h.n[i])
   end
-  linset = union(H.equalities, IntSet((size(H.A,1)+1):(size(H.A,1)+offseth)))
-  !isempty(CDD.HRepresentation([-H.A; A], [zeros(T, size(H.A,1)); h.h], linset))
+  #linset = union(H.equalities, IntSet((size(H.A,1)+1):(size(H.A,1)+offseth)))
+  linset = IntSet(1:offseth)
+  ine = HRepresentation(A, h.h, linset)
+  !Base.isempty(Base.intersect(H.poly, ine))#CDD.HRepresentation([-H.A; A], [zeros(T, size(H.A,1)); h.h], linset))
 end
 
-function Base.in{T<:Real}(h::PrimalEntropy{T}, H::EntropicCone{T})
-  if h.n > H.n
+function Base.in{NE, NC}(h::PrimalEntropy{NE}, H::EntropicCone{NC})
+  if NE > NC
     error("The vector has a higher dimension than the cone")
-  elseif h.n == H.n
-    fullin(h, H)
+  elseif NE == NC
+    fullin(h, H)[1]
   else
     partialin(h, H)
   end
 end
 
-function Base.in{T<:Real}(h::PrimalEntropyLift{T}, H::EntropicConeLift{T})
+function Base.in{NE, NC, T<:Real}(h::PrimalEntropyLift{NE, T}, H::EntropicConeLift{NC, T})
   if length(h.n) > length(H.n) || reducedim(|, h.n .> H.n, 1, false)[1]
     error("The vector has a higher dimension than the cone")
   elseif h.n == H.n
-    fullin(h, H)
+    fullin(h, H)[1]
   else
     partialin(h, H)
   end
 end
 
-function Base.in{T<:Real}(h::PrimalEntropy{T}, H::EntropicConeLift{T})
+function Base.in{NE, NC, T<:Real}(h::PrimalEntropy{NE, T}, H::EntropicConeLift{NC, T})
   if h.liftid < 1 || h.liftid > length(H.n) || h.n > H.n[h.liftid]
     error("The vector has a higher dimension than the cone")
   elseif h.n == H.n
-    fullin(h, H)
+    fullin(h, H)[1]
   else
     partialin(h, H)
   end
 end
 
-function redundant{T<:Real}(h::AbstractDualEntropy{T}, H::AbstractEntropicCone{T})
-  # equality field is ignored
-  if length(h.h) != size(H.A, 2)
-    error("The entropic vector should have the same dimension than the cone")
-  end
-  row = size(H.A, 1) + 1
-  ine = CDD.HRepresentation([-H.A; -h.h'], zeros(T, row), H.equalities)
-  (isin, certificate) = CDD.redundant(ine, row)
-  (isin, certificate)
+function redundant{N, S, T}(h::AbstractDualEntropy{N, S}, H::AbstractEntropicCone{N, T})
+  (isin, certificate, vertex) = isredundantinequality(H.poly, -h.h, zero(T), h.equality)
+  (isin, certificate, vertex)
 end
 
-function isimplied{T<:Real}(h::AbstractDualEntropy{T}, H::AbstractEntropicCone{T})
-  if h.equality
-    redundant(h, H)[1] && redundant(-h, H)[1]
-  else
-    redundant(h, H)[1]
-  end
+function Base.in{N}(h::DualEntropy{N}, H::EntropicCone{N})
+  redundant(h, H)[1]
 end
 
-function Base.in{T<:Real}(h::DualEntropy{T}, H::EntropicCone{T})
-  isimplied(h, H)
+function Base.in{N}(h::DualEntropyLift{N}, H::EntropicConeLift{N})
+  redundant(h, H)[1]
 end
 
-function Base.in{T<:Real}(h::DualEntropyLift{T}, H::EntropicConeLift{T})
-  isimplied(h, H)
-end
-
-function Base.in{T<:Real}(h::DualEntropy{T}, H::EntropicConeLift{T})
-  Base.in(DualEntropyLift{T}(h, length(H.n)), H)
+function Base.in{N}(h::DualEntropy{N}, H::EntropicConeLift{N})
+  Base.in(DualEntropyLift(h, length(H.n)), H)
 end

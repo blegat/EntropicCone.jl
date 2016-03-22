@@ -1,6 +1,6 @@
 export EntropicVector
 export PrimalEntropy, cardminusentropy, cardentropy, invalidfentropy, matusrentropy, entropyfrompdf, subpdf, toTikz
-export DualEntropy, DualEntropyLift, nonnegative, nondecreasing, submodular, submodulareq, ingleton, zhangyeunginequality, constraint41, constraint42, constraint43, constraint4, constraint51, constraint52, constraint53, constraint5
+export DualEntropy, DualEntropyLift, nonnegative, nondecreasing, submodular, submodulareq, ingleton
 
 # Entropic Vector
 
@@ -128,7 +128,7 @@ function DualEntropyLift{N, T}(h::DualEntropy{N, T}, m)
   hlift = zeros(T, m*N)
   offset = (h.liftid-1)*N
   hlift[(offset+1):(offset+N)] = h.h
-  DualEntropyLift{m*N}(N*ones(Int, m), hlift, h.equality)
+  DualEntropyLift{m*N, T}(N*ones(Int, m), hlift, h.equality)
 end
 
 DualEntropyLift{T<:Real}(n::Array{Int,1}, h::Array{T,1}, equality::Bool=false) = DualEntropyLift{length(h), T}(n, h, equality)
@@ -223,10 +223,10 @@ function constdualentropy{T<:Real}(n, x::T)
   DualEntropy(x * ones(T, ntodim(n)))
 end
 
-function one{T<:Real}(h::PrimalEntropy{T})
+function one{N,T<:Real}(h::PrimalEntropy{N,T})
   constprimalentropy(h.n, one(T))
 end
-function one{T<:Real}(h::DualEntropy{T})
+function one{N,T<:Real}(h::DualEntropy{N,T})
   constdualentropy(h.n, one(T))
 end
 
@@ -288,17 +288,6 @@ submodulareq(n, S::Unsigned, T::Unsigned) = submodulareq(n, S, T, 0x0)
 submodulareq(n, s::Signed, t::Signed, i::Signed) = submodulareq(n, set(s), set(t), set(i))
 submodulareq(n, s::Signed, t::Signed) = submodulareq(n, set(s), set(t), 0x0)
 
-function zhangyeunginequality(i::Signed, j::Signed, k::Signed, l::Signed)
-  n = 4
-  I = set(i)
-  J = set(j)
-  K = set(k)
-  L = set(l)
-  submodular(n, K, L, I) + submodular(n, K, L, J) + submodular(n, I, J) - submodular(n, K, L) +
-  submodular(n, I, K, L) + submodular(n, I, L, K) + submodular(n, K, L, I)
-end
-zhangyeunginequality() = zhangyeunginequality(1, 2, 3, 4)
-
 function ingleton(n, i, j, k, l)
   pos = []
   I = singleton(i)
@@ -318,41 +307,19 @@ function ingleton(n, i, j, k, l)
   dualentropywith(n, pos, [ij, K, L, ikl, jkl])
 end
 
-function ingleton(i, j)
+function getkl(i, j)
   x = 1:4
   kl = x[(x.!=i) & (x.!=j)]
-  ingleton(4, i, j, kl[1], kl[2])
+  (kl[1], kl[2])
 end
 
-function constraint41()
-  ingleton(1,2)
-end
-function constraint42()
-  submodular(4,2,3,4)
-end
-function constraint43()
-  submodular(4,2,4,3) + submodular(4, 3,4,2)
-end
-function constraint4(s)
-  2*s * constraint41() + 2*constraint42() + s*(s+1)*(constraint43())
-end
-
-function constraint51()
-  ingleton(5,1,2,3,4) + submodular(5,3,4,5) + submodular(5,4,5,3)
-end
-function constraint52()
-  submodular(5,3,5,4)
-end
-function constraint53()
-  submodular(5,2,4,3) + submodular(5,3,4,2)
-end
-function constraint5(s)
-  2 * s * constraint51() + 2 * constraint52() + s * (s-1) * constraint53()
+function ingleton(i, j)
+  ingleton(4, i, j, getkl(i, j)...)
 end
 
 # Classical Entropic Vectors
 function cardminusentropy(n, I::Unsigned)
-  h = PrimalEntropy{Int}(n, 1)
+  h = constprimalentropy(n, 0)
   for J in 0b1:ntodim(n)
     h[J] = card(setdiff(J, I))
   end

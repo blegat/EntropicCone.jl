@@ -9,6 +9,7 @@ import Polyhedra.getinequalities
 include("entropy.jl")
 include("setmanip.jl")
 include("vector.jl")
+include("famousnsi.jl")
 include("cone.jl")
 include("conelift.jl")
 include("coneoperations.jl")
