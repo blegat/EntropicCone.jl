@@ -1,8 +1,10 @@
-export EntropicCone, polymatroidcone, redundant, getinequalities, getextremerays, tight!
+export fulldim, EntropicCone, polymatroidcone, redundant, getinequalities, getextremerays, tight!
 
 # Entropic Cone
 
 abstract AbstractEntropicCone{N, T<:Real}
+
+fulldim{N}(h::AbstractEntropicCone{N}) = N
 
 type EntropicCone{N, T<:Real} <: AbstractEntropicCone{N, T}
   n::Int
@@ -72,7 +74,12 @@ function push!{N, T, S}(H::EntropicCone{N, T}, h::Vector{DualEntropy{N, S}})
   push!(H.poly, HRepresentation{S}(h))
 end
 
-
+function Base.intersect!{N}(h::AbstractEntropicCone{N}, ine::HRepresentation)
+  if N != size(ine.A, 2)
+    error("The dimension for the cone and the HRepresentation differ")
+  end
+  h.poly = intersect(h.poly, ine)
+end
 function Base.intersect!(h1::AbstractEntropicCone, h2::AbstractEntropicCone)
   if h1.n != h2.n
     error("The dimension for the cones differ")

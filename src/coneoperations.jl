@@ -12,7 +12,7 @@ function fullin{N}(h::AbstractPrimalEntropy{N}, H::AbstractEntropicCone{N})
   #reducedim(&, (H.A*h.h) .>= 0, true)[1]
 end
 function partialin{NE, NC, S, T}(h::AbstractPrimalEntropy{NE, S}, H::AbstractEntropicCone{NC, T})
-  A = zeros(T, sum(ntodim(h.n)), size(H.A, 2))
+  A = zeros(T, sum(ntodim(h.n)), NC)
   offseth = 0
   offsetsH = [0; cumsum(map(ntodim, H.n))]
   for i in eachindex(collect(h.n)) # use of collect in case h.n is scalar
@@ -37,7 +37,7 @@ function Base.in{NE, NC}(h::PrimalEntropy{NE}, H::EntropicCone{NC})
   end
 end
 
-function Base.in{NE, NC, T<:Real}(h::PrimalEntropyLift{NE, T}, H::EntropicConeLift{NC, T})
+function Base.in(h::PrimalEntropyLift, H::EntropicConeLift)
   if length(h.n) > length(H.n) || reducedim(|, h.n .> H.n, 1, false)[1]
     error("The vector has a higher dimension than the cone")
   elseif h.n == H.n
@@ -47,7 +47,7 @@ function Base.in{NE, NC, T<:Real}(h::PrimalEntropyLift{NE, T}, H::EntropicConeLi
   end
 end
 
-function Base.in{NE, NC, T<:Real}(h::PrimalEntropy{NE, T}, H::EntropicConeLift{NC, T})
+function Base.in(h::PrimalEntropy, H::EntropicConeLift)
   if h.liftid < 1 || h.liftid > length(H.n) || h.n > H.n[h.liftid]
     error("The vector has a higher dimension than the cone")
   elseif h.n == H.n
@@ -70,6 +70,6 @@ function Base.in{N}(h::DualEntropyLift{N}, H::EntropicConeLift{N})
   redundant(h, H)[1]
 end
 
-function Base.in{N}(h::DualEntropy{N}, H::EntropicConeLift{N})
+function Base.in(h::DualEntropy, H::EntropicConeLift)
   Base.in(DualEntropyLift(h, length(H.n)), H)
 end

@@ -11,8 +11,8 @@ function eq3(id1, id2)
   h
 end
 function eq4(id1, id2)
-  h1 = matussquare(5,1,2,3,4)
-  h2 = matussquare(5,1,2,3,4)
+  h1 = ingleton(5,1,2,3,4)
+  h2 = ingleton(5,1,2,3,4)
   h1.liftid = id1
   h2.liftid = id2
   h = DualEntropyLift(h1, 3) - DualEntropyLift(h2, 3)
@@ -23,10 +23,10 @@ function supmodular()
   submodular(5,3,4,5) + submodular(5,4,5,3) + submodular(5,3,5,4)
 end
 function lemma3(id1, id2)
-  h1 = matussquare(5,1,2,3,4) + supmodular()
+  h1 = ingleton(5,1,2,3,4) + supmodular()
   h2 = submodular(5,1,5,3 ) + submodular(5,1,5,4 ) + submodular(5,2, 5,3 ) + submodular(5,2,5,4) +
-       submodular(5,1,2,5 ) + submodular(5,3,4,15) + submodular(5,3, 4,25) + submodular(5,34,5,12) -
-      (submodular(5,1,5,34) + submodular(5,2,5,34) + submodular(5,12,5,34))
+  submodular(5,1,2,5 ) + submodular(5,3,4,15) + submodular(5,3, 4,25) + submodular(5,34,5,12) -
+  (submodular(5,1,5,34) + submodular(5,2,5,34) + submodular(5,12,5,34))
   h1.liftid = id1
   h2.liftid = id2
   h = DualEntropyLift(h1, 3) - DualEntropyLift(h2, 3)
@@ -34,7 +34,7 @@ function lemma3(id1, id2)
   h
 end
 function cor1(id1, id2)
-  h1 = matussquare(5,1,2,3,4) + supmodular()
+  h1 = ingleton(5,1,2,3,4) + supmodular()
   h2 = submodular(5,1,5,3) + submodular(5,1,5,4) + submodular(5,2,5,3) + submodular(5,2,5,4)
   h1.liftid = id1
   h2.liftid = id2
@@ -42,7 +42,7 @@ function cor1(id1, id2)
   h
 end
 function eq5(id1, id2)
-  h1 = matussquare(5,1,2,3,4) + supmodular()
+  h1 = ingleton(5,1,2,3,4) + supmodular()
   h2 = submodular(5,2,5,4)
   h1.liftid = id1
   h2.liftid = id2
@@ -55,7 +55,7 @@ G1 = polymatroidcone(5)
 G2 = polymatroidcone(5)
 G3 = polymatroidcone(5)
 push!(G2, submodulareq(5, 5, 12, 34))
-push!(G3, submodulareq(5, 5, 12, 34))
+#push!(G3, submodulareq(5, 5, 12, 34))
 push!(G3, submodulareq(5, 5, 13, 24))
 G = G1 * G2 * G3
 equalonsubsetsof!(G, 1, 2, 1234)
@@ -63,7 +63,6 @@ equalonsubsetsof!(G, 1, 2, 345)
 equalonsubsetsof!(G, 2, 3, 1234)
 equalonsubsetsof!(G, 2, 3, 245)
 
-if false
 eq3_12 = eq3(1,2)
 eq4_12 = eq4(1,2)
 @test eq3_12 in G
@@ -79,23 +78,17 @@ cor1_12 = cor1(1,2)
 @test cor1_12 in G
 eq5_12 = eq5(1,2)
 @test eq5_12 in G
+
+for s in 0:5
+  @test (matus51(s) in G) == (s <= 2)
 end
 
-  if false
-for i in 0:10
-  s = 1 << i
-  println(s)
-    @test (constraint5(s) in G)
-end
-  end
 equalvariable!(G, 1, 2, 5)
-if false
 for s in 0:5
-  println(s)
-  cons4 = constraint4(s)
+  cons4 = matus41(s)
+  @test cons4 == (2*s * (submodular(4,3,4,1) + submodular(4,3,4,2) + submodular(4,1,2) - submodular(4,3,4)) + 2*submodular(4,2,3,4) + s*(s+1)*(submodular(4,2,4,3)+submodular(4,3,4,2)))
   cons5 = DualEntropy([cons4.h; zeros(Int, 16)])
-  println(cons5 in G)
-end
+  @test (cons5 in G) == (s <= 2)
 end
 # for i = 0:10
 #   s = 1 << i
@@ -105,17 +98,16 @@ end
 #   println(cons5 in G)
 # end
 
-if false
 p4 = zeros(Float64,2,2,1,1)
 p4[1,1,1,1] = 1/2
 p4[2,2,1,1] = 1/2
-r4 = PrimalEntropy{Int}(entropyfrompdf(p4))
+r4 = PrimalEntropy{15,Int}(entropyfrompdf(p4))
 mr4 = matusrentropy(1,34)
 @test r4 == mr4
 p5 = zeros(Float64,2,2,1,1,2)
 p5[1,1,1,1,1] = 1/2
 p5[2,2,1,1,2] = 1/2
-r5 = PrimalEntropy{Int}(entropyfrompdf(p5))
+r5 = PrimalEntropy{31,Int}(entropyfrompdf(p5))
 #r52 = PrimalEntropy{Int}(entropyfrompdf(p5))
 #r52.liftid = 2
 #r53 = PrimalEntropy{Int}(entropyfrompdf(p5))
@@ -127,18 +119,14 @@ r5 = PrimalEntropy{Int}(entropyfrompdf(p5))
 @test r4 in G
 @test r5 in G
 #println(invalidfentropy(12) in G)
-end
 
-if false
 @test matusrentropy(1,14) in G
 @test matusrentropy(1,23) in G
 @test matusrentropy(2,4) in G
 @test matusrentropy(1,24) in G
 @test matusrentropy(2,3) in G
 @test !(invalidfentropy(12) in G)
-end
 
-println("FLOAT")
 function pdf4(p)
   x = zeros(Float64,2,2,2,2)
   x[1,1,1,2] = p
@@ -185,17 +173,6 @@ for x1 = 1:2
     end
   end
 end
-println(pdf0)
-println(pdf1)
-println(pdf2)
-
-println("1234")
-println(subpdf(pdf1, 1234))
-println(subpdf(pdf2, 1234))
-
-println("2345")
-println(subpdf(pdf1, 2345))
-println(subpdf(pdf2, 2345))
 
 hxi05 = entropyfrompdf(pdf0)
 hxi15 = entropyfrompdf(pdf1)
@@ -209,23 +186,15 @@ hxi5 = (hxi05 * hxi15) * hxi25
 @test hxi05[1:15] == hxi(0)
 @test hxi5[1:15] == hxi(0)
 
-Gf = EntropicConeLift{Float64}(G)
+Gf = EntropicConeLift{fulldim(G), Float64}(G)
 
-println(hxi5)
-println(hxi5 in Gf)
+@test !(hxi5 in Gf)
 
-if false
-println(typeof(hxi(0)))
-println(hxi(0))
-println(g_p(0))
-println(hxi(0) in Gf)
-println(g_p(0) in Gf)
+@test hxi(0) in Gf
+@test g_p(0) in Gf
 function mytest(h)
-  println("h = $h")
-  println(log(2) + 2*h*log(2) - 1/2 * hb(2*h))
-  println(1 + 2*h - 1/2 * hb(2*h))
-  println(hxi(h) in Gf)
-  println(g_p(h) in Gf)
+  @test hxi(h) in Gf
+  @test g_p(h) in Gf
 end
 mytest(.000001)
 mytest(.00001)
@@ -233,9 +202,3 @@ mytest(.0001)
 mytest(.001)
 mytest(.01)
 mytest(.1)
-end
-#println(g_p(.00001) in Gf)
-#println(g_p(.0001) in Gf)
-#println(g_p(.001) in Gf)
-#println(g_p(.01) in Gf)
-#println(g_p(.1) in Gf)

@@ -101,11 +101,11 @@ end
 #Doesn't work
 
 type DualEntropyLift{N, T<:Real} <: AbstractDualEntropy{N, T}
-  n::Array{Int,1}
-  h::AbstractArray{T, 1}
+  n::Vector{Int}
+  h::Vector{T}
   equality::Bool
 
-  function DualEntropyLift(n::Array{Int,1}, h::Array{T,1}=Array{T, 1}(N), equality::Bool=false)
+  function DualEntropyLift(n::Vector{Int}, h::Vector{T}=Vector{T}(N), equality::Bool=false)
     if sum(ntodim(n)) != N
       error("Number of variables and dimension does not match")
     end
@@ -115,12 +115,12 @@ type DualEntropyLift{N, T<:Real} <: AbstractDualEntropy{N, T}
     new(n, h, equality)
   end
 
-# function DualEntropyLift(n::Array{Int,1}, equality::Bool=false) # TODO merge the 2 constructors
-#   if sum(ntodim(n)) != N
-#     error("Number of variables and dimension does not match")
-#   end
-#   new(n, Array{T, 1}(N), equality)
-# end
+  function DualEntropyLift(n::Array{Int,1}, equality::Bool=false)
+    if sum(ntodim(n)) != N
+      error("Number of variables and dimension does not match")
+    end
+    new(n, Array{T, 1}(N), equality)
+  end
 
 end
 
@@ -128,7 +128,7 @@ function DualEntropyLift{N, T}(h::DualEntropy{N, T}, m)
   hlift = zeros(T, m*N)
   offset = (h.liftid-1)*N
   hlift[(offset+1):(offset+N)] = h.h
-  DualEntropyLift{m*N, T}(N*ones(Int, m), hlift, h.equality)
+  DualEntropyLift{m*N, T}(h.n*ones(Int, m), hlift, h.equality)
 end
 
 DualEntropyLift{T<:Real}(n::Array{Int,1}, h::Array{T,1}, equality::Bool=false) = DualEntropyLift{length(h), T}(n, h, equality)
@@ -180,7 +180,7 @@ type PrimalEntropyLift{N, T<:Real} <: AbstractPrimalEntropy{N, T}
 
 end
 
-PrimalEntropyLift{T<:Real}(n::Array{Int,1}, h::AbstractArray{T, 1}, liftid::Array{Int,1}) = PrimalEntropyLift{sum(ntodim(n)), T}(n, h, liftid)
+PrimalEntropyLift{T<:Real}(n::Array{Int,1}, h::AbstractArray{T, 1}, liftid::Array{Int,1}) = PrimalEntropyLift{Int(sum(ntodim(n))), T}(n, h, liftid)
 
 function (*){N1, N2, T<:Real}(h1::AbstractPrimalEntropy{N1, T}, h2::AbstractPrimalEntropy{N2, T})
   if length(h1.liftid) + length(h2.liftid) != length(union(IntSet(h1.liftid), IntSet(h2.liftid)))
@@ -204,7 +204,7 @@ end
 subpdf{n}(p::Array{Float64,n}, s::Signed) = subpdf(p, set(s))
 
 function entropyfrompdf{n}(p::Array{Float64,n})
-  h = PrimalEntropy{ntodim(n), Float64}(n, 1)
+  h = PrimalEntropy{Int(ntodim(n)), Float64}(n, 1)
   for i = 0x1:ntodim(n)
     h[i] = -sum(map(xlogx, subpdf(p, i)))
   end
@@ -234,8 +234,9 @@ end
 # Used by e.g. hcat
 Base.similar{T}(h::PrimalEntropy, ::Type{T}, dims::Dims) = length(dims) == 1 ? PrimalEntropy{dims[1], T}(dimton(dims[1]), h.liftid) : Array{T}(dims...)
 Base.similar{T}(h::DualEntropy, ::Type{T}, dims::Dims) = length(dims) == 1 ? DualEntropy{dims[1], T}(dimton(dims[1]), h.liftid, h.equality) : Array{T}(dims...)
-Base.similar{T}(h::PrimalEntropyLift, ::Type{T}, dims::Dims) = length(dims) == 1 ? PrimalEntropyLift{dims[1], T}(dimton(dims[1]), h.liftid) : Array{T}(dims...)
-Base.similar{T}(h::DualEntropyLift, ::Type{T}, dims::Dims) = length(dims) == 1 ? DualEntropyLift{dims[1], T}(dimton(dims[1]), h.equality) : Array{T}(dims...)
+# Cheating here, I cannot deduce n just from dims so I use copy(h.n)
+Base.similar{T}(h::PrimalEntropyLift, ::Type{T}, dims::Dims) = length(dims) == 1 ? PrimalEntropyLift{dims[1], T}(copy(h.n), h.liftid) : Array{T}(dims...)
+Base.similar{T}(h::DualEntropyLift, ::Type{T}, dims::Dims) = length(dims) == 1 ? DualEntropyLift{dims[1], T}(copy(h.n), h.equality) : Array{T}(dims...)
 #Base.similar{T}(h::EntropicVector, ::Type{T}) = EntropicVector(h.n)
 
 # Classical Entropic Inequalities

@@ -40,7 +40,7 @@ function matus42(s, i=1, j=2, k=3, l=4)
 end
 
 function matus5aux(s, ingli, inglj, inglk, ingll, i, j, k, l, m)
-  2s*(ingleton(5,ingi,inglj,inglk,ingll)+submodular(5,k,l,m)+submodular(5,l,m,k)) + 2submodular(5,k,m,l) + s*(s-1)*(submodular(5,j,l,k)+submodular(5,k,l,j))
+  2s*(ingleton(5,ingli,inglj,inglk,ingll)+submodular(5,k,l,m)+submodular(5,l,m,k)) + 2submodular(5,k,m,l) + s*(s-1)*(submodular(5,j,l,k)+submodular(5,k,l,j))
 end
 
 function matus51(s, i=1, j=2, k=3, l=4, m=5)
