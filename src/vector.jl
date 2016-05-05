@@ -44,20 +44,20 @@ abstract AbstractDualEntropy{N, T<:Real} <: EntropicVector{N, T}
 type DualEntropy{N, T<:Real} <: AbstractDualEntropy{N, T}
   n::Int
   h::AbstractArray{T, 1}
-  liftid::Int
   equality::Bool
+  liftid::Int
 
-  function DualEntropy(n::Int, liftid::Int=1, equality::Bool=false)
+  function DualEntropy(n::Int, equality::Bool=false, liftid::Int=1)
     if ntodim(n) != N
       error("Number of variables and dimension does not match")
     end
     if liftid < 1
       error("liftid must be positive")
     end
-    new(n, Array{T, 1}(N), liftid, equality)
+    new(n, Array{T, 1}(N), equality, liftid)
   end
 
-  function DualEntropy(h::AbstractArray{T, 1}, liftid::Int=1, equality::Bool=false)
+  function DualEntropy(h::AbstractArray{T, 1}, equality::Bool=false, liftid::Int=1)
     if N != length(h)
       error("Dimension N should be equal to the length of h")
     end
@@ -65,14 +65,14 @@ type DualEntropy{N, T<:Real} <: AbstractDualEntropy{N, T}
     if ntodim(n) != N
       error("Illegal size of entropic constraint")
     end
-    new(n, h, liftid, equality)
+    new(n, h, equality, liftid)
   end
 
 end
 
-DualEntropy{T<:Real}(h::AbstractArray{T, 1}, liftid::Int=1, equality::Bool=false) = DualEntropy{length(h), T}(h, liftid, equality)
+DualEntropy{T<:Real}(h::AbstractArray{T, 1}, equality::Bool=false, liftid::Int=1) = DualEntropy{length(h), T}(h, equality, liftid)
 
-function Base.convert{N, T<:Real}(::Type{HRepresentation{T}}, h::Vector{DualEntropy{N, T}})
+function Base.convert{N, T<:Real}(::Type{SimpleHRepresentation{N,T}}, h::Vector{DualEntropy{N, T}})
   linset = IntSet([])
   m = length(h)
   A = Matrix{T}(m, N)
@@ -82,15 +82,19 @@ function Base.convert{N, T<:Real}(::Type{HRepresentation{T}}, h::Vector{DualEntr
       push!(linset, i)
     end
   end
-  HRepresentation(A, zeros(T, m), linset)
+  SimpleHRepresentation(A, zeros(T, m), linset)
 end
-function Base.convert{N, T<:Real}(::Type{HRepresentation{T}}, h::DualEntropy{N, T})
+function Base.convert{N, T<:Real}(::Type{SimpleHRepresentation{N,T}}, h::DualEntropy{N, T})
   linset = IntSet([])
   if h.equality
     push!(linset, 1)
   end
-  HRepresentation(-h.h', zeros(T, 1), linset)
+  SimpleHRepresentation(-h.h', zeros(T, 1), linset)
 end
+
+import Polyhedra.HRepresentation
+HRepresentation{N,T}(h::Vector{DualEntropy{N,T}}) = SimpleHRepresentation{N,T}(h)
+HRepresentation{N,T}(h::DualEntropy{N,T}) = SimpleHRepresentation{N,T}(h)
 
 function setequality(h::DualEntropy, eq::Bool)
   h.equality = eq
@@ -115,11 +119,11 @@ type DualEntropyLift{N, T<:Real} <: AbstractDualEntropy{N, T}
     new(n, h, equality)
   end
 
-  function DualEntropyLift(n::Array{Int,1}, equality::Bool=false)
+  function DualEntropyLift(n::Vector{Int}, equality::Bool=false)
     if sum(ntodim(n)) != N
       error("Number of variables and dimension does not match")
     end
-    new(n, Array{T, 1}(N), equality)
+    new(n, Vector{T}(N), equality)
   end
 
 end
@@ -212,7 +216,7 @@ function entropyfrompdf{n}(p::Array{Float64,n})
 end
 
 (-){N, T<:Real}(h::PrimalEntropy{N, T})     = PrimalEntropy{N, T}(-h.h, h.liftid)
-(-){N, T<:Real}(h::DualEntropy{N, T})       =   DualEntropy{N, T}(-h.h, h.liftid)
+(-){N, T<:Real}(h::DualEntropy{N, T})       =   DualEntropy{N, T}(-h.h, h.equality, h.liftid)
 (-){N, T<:Real}(h::PrimalEntropyLift{N, T}) = PrimalEntropyLift{N, T}(h.n, -h.h, h.liftid)
 (-){N, T<:Real}(h::DualEntropyLift{N, T})   =   DualEntropyLift{N, T}(h.n, -h.h, h.equality)
 
@@ -233,7 +237,7 @@ end
 #Base.similar(h::EntropicVector) = EntropicVector(h.n)
 # Used by e.g. hcat
 Base.similar{T}(h::PrimalEntropy, ::Type{T}, dims::Dims) = length(dims) == 1 ? PrimalEntropy{dims[1], T}(dimton(dims[1]), h.liftid) : Array{T}(dims...)
-Base.similar{T}(h::DualEntropy, ::Type{T}, dims::Dims) = length(dims) == 1 ? DualEntropy{dims[1], T}(dimton(dims[1]), h.liftid, h.equality) : Array{T}(dims...)
+Base.similar{T}(h::DualEntropy, ::Type{T}, dims::Dims) = length(dims) == 1 ? DualEntropy{dims[1], T}(dimton(dims[1]), h.equality, h.liftid) : Array{T}(dims...)
 # Cheating here, I cannot deduce n just from dims so I use copy(h.n)
 Base.similar{T}(h::PrimalEntropyLift, ::Type{T}, dims::Dims) = length(dims) == 1 ? PrimalEntropyLift{dims[1], T}(copy(h.n), h.liftid) : Array{T}(dims...)
 Base.similar{T}(h::DualEntropyLift, ::Type{T}, dims::Dims) = length(dims) == 1 ? DualEntropyLift{dims[1], T}(copy(h.n), h.equality) : Array{T}(dims...)

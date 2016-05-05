@@ -15,7 +15,7 @@ type EntropicConeLift{N, T<:Real} <: AbstractEntropicCone{N, T}
     if !isempty(equalities) && last(equalities) > size(A, 1)
       error("Equalities should range from 1 to the number of rows of A")
     end
-    ine = HRepresentation(A, zeros(T, size(A, 1)), equalities)
+    ine = SimpleHRepresentation(A, zeros(T, size(A, 1)), equalities)
     new(n, polyhedron(ine))
   end
 
@@ -57,7 +57,7 @@ function equalonsubsetsof!{N, T}(H::EntropicConeLift{N, T}, id1, id2, S::Unsigne
       cur += 1
     end
   end
-  ine = HRepresentation(A, zeros(T, nrows), IntSet(1:nrows))
+  ine = SimpleHRepresentation(A, zeros(T, nrows), IntSet(1:nrows))
   intersect!(H, ine)
 end
 equalonsubsetsof!(H::EntropicConeLift, id1, id2, s::Signed) = equalonsubsetsof!(H, id1, id2, set(s))
@@ -82,5 +82,5 @@ function equalvariable!{N, T}(h::EntropicConeLift{N, T}, id::Integer, i::Signed,
       cur += 1
     end
   end
-  intersect!(h, HRepresentation(A, zeros(T, nrows), IntSet(1:nrows)))
+  intersect!(h, SimpleHRepresentation(A, zeros(T, nrows), IntSet(1:nrows)))
 end

@@ -23,7 +23,7 @@ function partialin{NE, NC, S, T}(h::AbstractPrimalEntropy{NE, S}, H::AbstractEnt
   end
   #linset = union(H.equalities, IntSet((size(H.A,1)+1):(size(H.A,1)+offseth)))
   linset = IntSet(1:offseth)
-  ine = HRepresentation(A, h.h, linset)
+  ine = SimpleHRepresentation(A, h.h, linset)
   !Base.isempty(Base.intersect(H.poly, ine))#CDD.HRepresentation([-H.A; A], [zeros(T, size(H.A,1)); h.h], linset))
 end
 
