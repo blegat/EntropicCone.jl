@@ -29,6 +29,14 @@ Base.convert{N, T<:Real}(::Type{EntropicConeLift{N, T}}, h::EntropicCone{N, T}) 
 
 #Base.getindex{T<:Real}(H::EntropicConeLift{T}, i) = DualEntropyLift(H.n, H.A[i,:], i in H.equalities)
 
+function offsetfor(h::EntropicConeLift, id::Integer)
+  id == 1 ? 0 : sum(map(ntodim, h.n[1:(id-1)]))
+end
+function rangefor(h::EntropicConeLift, id::Integer)
+  offset = offsetfor(h, id)
+  # See issue #16247 of JuliaLang/julia
+  UnitRange{Int}(offset + (1:ntodim(h.n[id])))
+end
 
 promote_rule{N, T<:Real}(::Type{EntropicConeLift{N, T}}, ::Type{EntropicCone{N, T}}) = EntropicConeLift{N, T}
 
@@ -41,19 +49,19 @@ function (*){N1, N2, T<:Real}(x::AbstractEntropicCone{N1, T}, y::AbstractEntropi
   EntropicConeLift{N1+N2, T}([x.n; y.n], x.poly * y.poly)
 end
 
-function equalonsubsetsof!{N, T}(H::EntropicConeLift{N, T}, id1, id2, S::Unsigned)
+function equalonsubsetsof!{N, T}(H::EntropicConeLift{N, T}, id1, id2, S::Unsigned, I::Unsigned=0x0, σ=i->i)
   if S == 0x0
     return
   end
   nrows = (1<<(card(S)))-1
   A = zeros(T, nrows, N)
   cur = 1
-  offset1 = sum(map(ntodim, H.n[1:(id1-1)]))
-  offset2 = sum(map(ntodim, H.n[1:(id2-1)]))
-  for I in 0x1:S
-    if subset(I, S)
-      A[cur, offset1+I] = 1
-      A[cur, offset2+I] = -1
+  offset1 = offsetfor(H, id1)
+  offset2 = offsetfor(H, id2)
+  for K in 0x1:S
+    if K ⊆ S && !(K ⊆ I)
+      A[cur, offset1+K] = 1
+      A[cur, offset2+mymap(σ, K, H.n[id2])] = -1
       cur += 1
     end
   end
@@ -72,7 +80,7 @@ function equalvariable!{N, T}(h::EntropicConeLift{N, T}, id::Integer, i::Signed,
   end
   nrows = 1 << (h.n[id]-1)
   A = zeros(T, nrows, N)
-  offset = sum(map(ntodim, h.n[1:(id-1)]))
+  offset = offsetfor(h, id)
   cur = 1
   for S in 0x1:ntodim(h.n[id])
     if myin(i, S)
@@ -84,3 +92,46 @@ function equalvariable!{N, T}(h::EntropicConeLift{N, T}, id::Integer, i::Signed,
   end
   intersect!(h, SimpleHRepresentation(A, zeros(T, nrows), IntSet(1:nrows)))
 end
+
+ninneradh(n, J::Unsigned, K::Unsigned) = n
+nselfadh(n, J::Unsigned, I::Unsigned) = n + card(setdiff(J, I))
+nadh(n, J::Unsigned, K::Unsigned, adh::Type{Val{:Inner}}) = ninneradh(n, J, K)
+nadh(n, J::Unsigned, K::Unsigned, adh::Type{Val{:Self}}) = nselfadh(n, J, K)
+nadh(n, J::Unsigned, K::Unsigned, adh::Symbol) = nadh(n, J, K, Val{adh})
+
+function inneradhesivelift(h::EntropicCone, J::Unsigned, K::Unsigned)
+  cur = polymatroidcone(ninneradh(h.n, J, K))
+  push!(cur, submodulareq(cur.n, J, K))
+  lift = h * cur
+  I = J ∩ K
+  equalonsubsetsof!(lift, 1, 2, J)
+  equalonsubsetsof!(lift, 1, 2, K, I)
+  lift
+end
+function selfadhesivelift(h::EntropicCone, J::Unsigned, I::Unsigned)
+  newn = nselfadh(h.n, J, I)
+  K = setdiff(fullset(newn), fullset(h.n)) ∪ I
+  cur = polymatroidcone(newn)
+  # FIXME fullset(h.n) is very important, clarify this !
+  push!(cur, submodulareq(cur.n, fullset(h.n), K, I))
+  lift = h * cur
+  equalonsubsetsof!(lift, 1, 2, fullset(h.n))
+  themap = Vector{Int}(h.n)
+  cur = h.n
+  for i in 1:h.n
+    if myin(i, I)
+      themap[i] = i
+    elseif myin(i, J)
+      cur += 1
+      themap[i] = cur
+    else
+      themap[i] = -1
+    end
+  end
+  @assert cur == newn
+  equalonsubsetsof!(lift, 1, 2, J, I, i->themap[i])
+  lift
+end
+adhesivelift(h::EntropicCone, J::Unsigned, K::Unsigned, adh::Type{Val{:Inner}}) = inneradhesivelift(h, J, K)
+adhesivelift(h::EntropicCone, J::Unsigned, K::Unsigned, adh::Type{Val{:Self}}) = selfadhesivelift(h, J, K)
+adhesivelift(h::EntropicCone, J::Unsigned, K::Unsigned, adh::Symbol) = adhesivelift(h, J, K, Val{adh})

@@ -25,11 +25,18 @@ function Base.setdiff(S::Unsigned, I::Unsigned)
   S & (~I)
 end
 
+# S ∪ T
 function Base.union(S::Unsigned, T::Unsigned)
   S | T
 end
 
-function subset(S::Unsigned, T::Unsigned)
+# S ∩ T
+function Base.intersect(S::Unsigned, T::Unsigned)
+  S & T
+end
+
+# S ⊆ T
+function issubset(S::Unsigned, T::Unsigned)
   Base.setdiff(S, T) == zero(S)
 end
 
@@ -61,4 +68,14 @@ function card(S::Unsigned)
     S >>= 1
   end
   Signed(sum)
+end
+
+function mymap(map, S::Unsigned, n)
+  T = 0x0
+  for i in 1:n
+    if myin(i, S)
+      T = T ∪ singleton(map(i))
+    end
+  end
+  T
 end

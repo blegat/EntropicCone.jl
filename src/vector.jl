@@ -85,7 +85,7 @@ function Base.convert{N, T<:Real}(::Type{SimpleHRepresentation{N,T}}, h::Vector{
   SimpleHRepresentation(A, zeros(T, m), linset)
 end
 function Base.convert{N, T<:Real}(::Type{SimpleHRepresentation{N,T}}, h::DualEntropy{N, T})
-  linset = IntSet([])
+  linset = IntSet()
   if h.equality
     push!(linset, 1)
   end
@@ -119,7 +119,7 @@ type DualEntropyLift{N, T<:Real} <: AbstractDualEntropy{N, T}
     new(n, h, equality)
   end
 
-  function DualEntropyLift(n::Vector{Int}, equality::Bool=false)
+  function DualEntropyLift(n::Vector{Int}, equality::Bool)
     if sum(ntodim(n)) != N
       error("Number of variables and dimension does not match")
     end
@@ -246,14 +246,15 @@ Base.similar{T}(h::DualEntropyLift, ::Type{T}, dims::Dims) = length(dims) == 1 ?
 # Classical Entropic Inequalities
 function dualentropywith(n, pos, neg)
   ret = constdualentropy(n, 0)
+  # I use -= and += in case some I is in pos and neg
   for I in pos
     if I != 0x0
-      ret[I] = 1
+      ret[I] += 1
     end
   end
   for I in neg
     if I != 0x0
-      ret[I] = -1
+      ret[I] -= 1
     end
   end
   ret
@@ -268,7 +269,9 @@ end
 
 function nondecreasing(n, S::Unsigned, T::Unsigned)
   T = union(S, T)
-  dualentropywith(n, [T], [S])
+  x = dualentropywith(n, [T], [S]) # fix of weird julia bug
+  print("")
+  x
 end
 function nondecreasing(n, s::Signed, t::Signed)
   nondecreasing(n, set(s), set(t))
@@ -280,18 +283,18 @@ function submodular(n, S::Unsigned, T::Unsigned, I::Unsigned)
   U = union(S, T)
   dualentropywith(n, [S, T], [U, I])
 end
-submodular(n, S::Unsigned, T::Unsigned) = submodular(n, S, T, 0x0)
+submodular(n, S::Unsigned, T::Unsigned) = submodular(n, S, T, S ∩ T)
 submodular(n, s::Signed, t::Signed, i::Signed) = submodular(n, set(s), set(t), set(i))
-submodular(n, s::Signed, t::Signed) = submodular(n, set(s), set(t), 0x0)
+submodular(n, s::Signed, t::Signed) = submodular(n, set(s), set(t))
 
 function submodulareq(n, S::Unsigned, T::Unsigned, I::Unsigned)
   h = submodular(n, S, T, I)
   h.equality = true
   h
 end
-submodulareq(n, S::Unsigned, T::Unsigned) = submodulareq(n, S, T, 0x0)
+submodulareq(n, S::Unsigned, T::Unsigned) = submodulareq(n, S, T, S ∩ T)
 submodulareq(n, s::Signed, t::Signed, i::Signed) = submodulareq(n, set(s), set(t), set(i))
-submodulareq(n, s::Signed, t::Signed) = submodulareq(n, set(s), set(t), 0x0)
+submodulareq(n, s::Signed, t::Signed) = submodulareq(n, set(s), set(t))
 
 function ingleton(n, i, j, k, l)
   pos = []
@@ -303,7 +306,7 @@ function ingleton(n, i, j, k, l)
   kl = union(K, L)
   ijkl = union(ij, kl)
   for s in 0b1:ntodim(n)
-    if subset(s, ijkl) && card(s) == 2 && s != ij
+    if issubset(s, ijkl) && card(s) == 2 && s != ij
       pos = [pos; s]
     end
   end

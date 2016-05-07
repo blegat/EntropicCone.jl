@@ -9,8 +9,8 @@ function enforceadhesivity{N, ET<:Real}(h::EntropicCone{N, ET})
         push!(cur, submodulareq(cur.n, S, T, I))
         lift *= cur
         last += 1
-        equalonsubsetsof!(G, 1, last, union(S, I))
-        equalonsubsetsof!(G, 1, last, union(T, I))
+        equalonsubsetsof!(lift, 1, last, union(S, I))
+        equalonsubsetsof!(lift, 1, last, union(T, I))
       end
     end
   end

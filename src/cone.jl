@@ -93,12 +93,14 @@ function Base.intersect(h1::AbstractEntropicCone, h2::AbstractEntropicCone)
   typeof(h1)(h1.n, intersect(h1.poly, h2.poly))
 end
 
-function polymatroidcone(n::Integer)
+function polymatroidcone(n::Integer, minimal = true)
   # 2^n-1           nonnegative   inequalities H(S) >= 0
   # n*2^(n-1)-n     nondecreasing inequalities H(S) >= H(T) https://oeis.org/A058877
   # n*(n+1)*2^(n-2) submodular    inequalities              https://oeis.org/A001788
-  n_nonnegative   = 2^n-1
-  n_nondecreasing = n*2^(n-1)-n
+
+  # Actually, nonnegative is not required and nondecreasing only for H([n]) and H([n] \ i)
+  n_nonnegative   = minimal ? 0 : 2^n-1
+  n_nondecreasing = minimal ? n : n*2^(n-1)-n
   n_submodular    = 0
   if n >= 3
     n_submodular  = (n-1)*n*2^(n-3)
@@ -119,12 +121,16 @@ function polymatroidcone(n::Integer)
     end
   end
   for I = 1:ntodim(n)
-    A[offset_nonnegative+cur_nonnegative, :] = nonnegative(n, I)
-    cur_nonnegative += 1
+    if !minimal
+      A[offset_nonnegative+cur_nonnegative, :] = nonnegative(n, I)
+      cur_nonnegative += 1
+    end
     for j = 1:n
       if !myin(j, I)
-        A[offset_nondecreasing+cur_nondecreasing, :] = nondecreasing(n, I, set(j))
-        cur_nondecreasing += 1
+        if !minimal || card(I) == n-1
+          A[offset_nondecreasing+cur_nondecreasing, :] = nondecreasing(n, I, set(j))
+          cur_nondecreasing += 1
+        end
         for k = (j+1):n
           if !myin(k, I)
             A[offset_submodular+cur_submodular, :] = submodular(n, set(j), set(k), I)
