@@ -16,26 +16,29 @@ function extractNLDS(c, h::EntropicConeLift, id, idp, solver)
   hrep = SimpleHRepresentation(getinequalities(h.poly))
   idx  = rangefor(h, id)
   idxp = rangefor(h, idp)
-  Aabs = abs(hrep.A)
-  nz  = sum(Aabs[:,idx], 2)
-  nzp = sum(Aabs[:,idxp], 2)
-  nzo = sum(Aabs, 2) - nz - nzp
-  #map(i -> nz[i] > 0 && nzo[i] == 0, 1:size(hrep.A, 1)) # TODO use this
-  rows = map(i -> nz[i] > 0, 1:size(hrep.A, 1))
-  W = hrep.A[rows,idx]
-  T = hrep.A[rows,idxp]
-  h = hrep.b[rows]
-  newlinset = IntSet()
-  cur = 0
-  for i in 1:size(hrep.A, 1)
-    if rows[i]
-      cur += 1
-      if i in hrep.linset
-        push!(newlinset, cur)
-      end
-    end
-  end
-  getNLDS(c, W, h, T, newlinset, solver)
+# Aabs = abs(hrep.A)
+# nz  = sum(Aabs[:,idx], 2)
+# nzp = sum(Aabs[:,idxp], 2)
+# nzo = sum(Aabs, 2) - nz - nzp
+# #map(i -> nz[i] > 0 && nzo[i] == 0, 1:size(hrep.A, 1)) # TODO use this
+# rows = map(i -> nz[i] > 0, 1:size(hrep.A, 1))
+# W = hrep.A[rows,idx]
+# T = hrep.A[rows,idxp]
+# h = hrep.b[rows]
+# newlinset = IntSet()
+# cur = 0
+# for i in 1:size(hrep.A, 1)
+#   if rows[i]
+#     cur += 1
+#     if i in hrep.linset
+#       push!(newlinset, cur)
+#     end
+#   end
+# end
+# getNLDS(c, W, h, T, newlinset, solver)
+  W = hrep.A[:,idx]
+  T = hrep.A[:,idxp]
+  getNLDS(c, W, hrep.b, T, hrep.linset, solver)
 end
 
 function addchildren!(node, n, allnodes, solver, max_n)
@@ -46,15 +49,15 @@ function addchildren!(node, n, allnodes, solver, max_n)
       for K in 0x1:ntodim(n)
         if J == K ||
           (adh == :Self && !(K ⊆ J)) ||
-          (adh == :Self && !(K ⊆ J)) ||
           #(adh == :Self && !(fullset(n) ⊆ J)) || # Don't do that, Z-Y is not found with max_n = 5 and no inner otherwise
+          (adh == :Self && (fullset(n) ⊆ J)) || # Don't do that, Z-Y is not found with max_n = 5 and no inner otherwise
           (adh == :Inner && K ⊆ J) ||
           (adh == :Inner && J ⊆ K) ||
           (adh == :Inner && (K ∩ J) == 0) ||
           (adh == :Inner && !(fullset(n) ⊆ (K ∪ J))) ||
           (adh == :Self && n <= 3) ||
-          (adh == :Inner && n <= 4) ||
-          adh == :Inner
+          (adh == :Inner && n <= 4)# ||
+          #adh == :Inner
           continue
         end
         if nadh(n, J, K, adh) <= max_n
@@ -74,7 +77,8 @@ function getSDDPNode(allnodes, np, Jp, Kp, adhp, parent, solver, max_n)
   if isnull(allnodes[np,Jp,Kp])
     @show (np, Jp, Kp)
     n = nadh(np, Jp, Kp, adhp)
-    h = polymatroidcone(np)
+    #h = polymatroidcone(np)
+    h = EntropicCone{Int(ntodim(np)), Float64}(np)
     lift = adhesivelift(h, Jp, Kp, adhp)
     c = constdualentropy(n, 0)
     nlds = extractNLDS(c, lift, 2, 1, solver)

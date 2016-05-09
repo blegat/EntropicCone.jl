@@ -21,7 +21,7 @@ type EntropicCone{N, T<:Real} <: AbstractEntropicCone{N, T}
     new(dimton(N), p)
   end
 
-  function EntropicCone(n::Int, A::Array{T,2}, equalities::IntSet)
+  function EntropicCone(n::Int, A::Array{T,2} = Matrix{T}(0, N), equalities::IntSet = IntSet())
     if ntodim(n) != size(A, 2)
       error("The dimension in n does not agree with the number of columns of A")
     end
@@ -29,13 +29,13 @@ type EntropicCone{N, T<:Real} <: AbstractEntropicCone{N, T}
       error("Equalities should range from 1 to the number of rows of A")
     end
     ine = SimpleHRepresentation(-A, zeros(T, size(A, 1)), equalities)
-    new(n, CDDPolyhedron{N, T}(ine))
+    new(n, polyhedron(ine))
   end
 
 end
 
 EntropicCone{T<:AbstractFloat}(n::Int, A::Matrix{T}) = EntropicCone{size(A, 2), Float64}(n, Matrix{Float64}(A), IntSet([]))
-EntropicCone{T<:Real}(n::Int, A::Matrix{T}) = EntropicCone{size(A, 2), Rational{BigInt}}(n, Matrix{Rational{BigInt}}(A), IntSet([]))
+EntropicCone{T<:Real}(n::Int, A::Matrix{T}) = EntropicCone{size(A, 2), Rational{BigInt}}(n, Matrix{Rational{BigInt}}(A), IntSet())
 
 #Base.getindex{T<:Real}(H::EntropicCone{T}, i) = DualEntropy(H.n, H.A[i,:], i in H.equalities) # FIXME
 
@@ -93,7 +93,7 @@ function Base.intersect(h1::AbstractEntropicCone, h2::AbstractEntropicCone)
   typeof(h1)(h1.n, intersect(h1.poly, h2.poly))
 end
 
-function polymatroidcone(n::Integer, minimal = true)
+function polymatroidcone{T}(::Type{T}, n::Integer, minimal = true)
   # 2^n-1           nonnegative   inequalities H(S) >= 0
   # n*2^(n-1)-n     nondecreasing inequalities H(S) >= H(T) https://oeis.org/A058877
   # n*(n+1)*2^(n-2) submodular    inequalities              https://oeis.org/A001788
@@ -113,7 +113,7 @@ function polymatroidcone(n::Integer, minimal = true)
   cur_nonnegative   = 1
   cur_nondecreasing = 1
   cur_submodular    = 1
-  A = zeros(Int, n_nonnegative + n_nondecreasing + n_submodular, ntodim(n))
+  A = zeros(T, n_nonnegative + n_nondecreasing + n_submodular, ntodim(n))
   for j = 1:n
     for k = (j+1):n
       A[offset_submodular+cur_submodular, :] = submodular(n, set(j), set(k), 0x0)
@@ -142,6 +142,7 @@ function polymatroidcone(n::Integer, minimal = true)
   end
   EntropicCone(n, A)
 end
+polymatroidcone(n::Integer, minimal = true) = polymatroidcone(Int, n, true)
 
 function tight!(h::EntropicCone)
   # FIXME it doesn't work if I do not specify the type

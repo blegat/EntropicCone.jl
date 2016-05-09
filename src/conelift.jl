@@ -99,8 +99,8 @@ nadh(n, J::Unsigned, K::Unsigned, adh::Type{Val{:Inner}}) = ninneradh(n, J, K)
 nadh(n, J::Unsigned, K::Unsigned, adh::Type{Val{:Self}}) = nselfadh(n, J, K)
 nadh(n, J::Unsigned, K::Unsigned, adh::Symbol) = nadh(n, J, K, Val{adh})
 
-function inneradhesivelift(h::EntropicCone, J::Unsigned, K::Unsigned)
-  cur = polymatroidcone(ninneradh(h.n, J, K))
+function inneradhesivelift{N, T}(h::EntropicCone{N, T}, J::Unsigned, K::Unsigned)
+  cur = polymatroidcone(T, ninneradh(h.n, J, K))
   push!(cur, submodulareq(cur.n, J, K))
   lift = h * cur
   I = J ∩ K
@@ -108,10 +108,10 @@ function inneradhesivelift(h::EntropicCone, J::Unsigned, K::Unsigned)
   equalonsubsetsof!(lift, 1, 2, K, I)
   lift
 end
-function selfadhesivelift(h::EntropicCone, J::Unsigned, I::Unsigned)
+function selfadhesivelift{N, T}(h::EntropicCone{N, T}, J::Unsigned, I::Unsigned)
   newn = nselfadh(h.n, J, I)
   K = setdiff(fullset(newn), fullset(h.n)) ∪ I
-  cur = polymatroidcone(newn)
+  cur = polymatroidcone(T, newn)
   # FIXME fullset(h.n) is very important, clarify this !
   push!(cur, submodulareq(cur.n, fullset(h.n), K, I))
   lift = h * cur
