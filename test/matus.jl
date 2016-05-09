@@ -1,6 +1,3 @@
-using InformationTheory
-using Base.Test
-
 function eq3(id1, id2)
   h1 = submodular(5,2,4,3) + submodular(5,3,4,2)
   h2 = submodular(5,3,4,2) + submodular(5,2,4,3)
@@ -186,7 +183,7 @@ hxi5 = (hxi05 * hxi15) * hxi25
 @test hxi05[1:15] == hxi(0)
 @test hxi5[1:15] == hxi(0)
 
-Gf = EntropicConeLift{fulldim(G), Float64}(G)
+Gf = EntropyConeLift{fulldim(G), Float64}(G)
 
 @test !(hxi5 in Gf)
 

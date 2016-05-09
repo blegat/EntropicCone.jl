@@ -1,4 +1,4 @@
-using InformationTheory
+using EntropicCone
 using Base.Test
 
 include("lp.jl")

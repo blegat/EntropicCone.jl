@@ -1,7 +1,7 @@
 import MathProgBase.linprog
 export getSDDPLattice
 
-function MathProgBase.linprog(c::DualEntropy, h::EntropicCone, cut::DualEntropy)
+function MathProgBase.linprog(c::DualEntropy, h::EntropyCone, cut::DualEntropy)
   cuthrep = SimpleHRepresentation(cut.h', [1])
   MathProgBase.linprog(c.h, intersect(h.poly, cuthrep))
 end
@@ -9,10 +9,14 @@ end
 function getNLDS(c::DualEntropy, W, h, T, linset, solver)
   K = [(:NonNeg, collect(setdiff(IntSet(1:size(W, 1)), linset))), (:Zero, collect(linset))]
   C = [(:NonNeg, collect(1:size(W, 2)))]
+  @show typeof(W)
+  @show typeof(h)
+  @show typeof(T)
+  @show typeof(c.h)
   NLDS{Float64}(W, h, T, K, C, c.h, solver)
 end
 
-function extractNLDS(c, h::EntropicConeLift, id, idp, solver)
+function extractNLDS(c, h::EntropyConeLift, id, idp, solver)
   hrep = SimpleHRepresentation(getinequalities(h.poly))
   idx  = rangefor(h, id)
   idxp = rangefor(h, idp)
@@ -78,7 +82,7 @@ function getSDDPNode(allnodes, np, Jp, Kp, adhp, parent, solver, max_n)
     @show (np, Jp, Kp)
     n = nadh(np, Jp, Kp, adhp)
     #h = polymatroidcone(np)
-    h = EntropicCone{Int(ntodim(np)), Float64}(np)
+    h = EntropyCone{Int(ntodim(np)), Float64}(np)
     lift = adhesivelift(h, Jp, Kp, adhp)
     c = constdualentropy(n, 0)
     nlds = extractNLDS(c, lift, 2, 1, solver)
@@ -89,12 +93,12 @@ function getSDDPNode(allnodes, np, Jp, Kp, adhp, parent, solver, max_n)
   get(allnodes[np,Jp,Kp])
 end
 
-function getRootNode(c::DualEntropy, H::EntropicCone, cut::DualEntropy, allnodes, solver, max_n)
+function getRootNode(c::DualEntropy, H::EntropyCone, cut::DualEntropy, allnodes, solver, max_n)
   cuthrep = SimpleHRepresentation(cut.h', [1])
   hrep = SimpleHRepresentation(getinequalities(intersect(H.poly, cuthrep)))
   W = hrep.A
   h = hrep.b
-  T = Matrix{Float64}(length(h),0)
+  T = spzeros(Float64, length(h), 0)
   nlds = getNLDS(c, W, h, T, hrep.linset, solver)
 # K = [(:NonNeg, collect(1:size(W, 1)))]
 # C = [(:NonNeg, collect(1:size(W, 2)))]
@@ -105,7 +109,7 @@ function getRootNode(c::DualEntropy, H::EntropicCone, cut::DualEntropy, allnodes
   root
 end
 
-function getSDDPLattice(c::DualEntropy, h::EntropicCone, solver, max_n, cut::DualEntropy)
+function getSDDPLattice(c::DualEntropy, h::EntropyCone, solver, max_n, cut::DualEntropy)
   # allnodes[n][J][K]: if K ⊆ J, it is self-adhesivity, otherwise it is inner-adhesivity
   allnodes = Array{Nullable{SDDPNode{Float64}},3}(max_n, Int(ntodim(max_n)), Int(ntodim(max_n)))
   allnodes[:] = nothing

@@ -1,60 +1,60 @@
-export EntropicConeLift, equalonsubsetsof!, equalvariable!
+export EntropyConeLift, equalonsubsetsof!, equalvariable!
 
-type EntropicConeLift{N, T<:Real} <: AbstractEntropicCone{N, T}
+type EntropyConeLift{N, T<:Real} <: AbstractEntropyCone{N, T}
   n::Vector{Int}
   poly::Polyhedron{N, T}
 
-  function EntropicConeLift(n::Array{Int,1}, poly::Polyhedron{N, T})
+  function EntropyConeLift(n::Vector{Int}, poly::Polyhedron{N, T})
     new(n, poly)
   end
 
-  function EntropicConeLift(n::Array{Int,1}, A::Array{T,2}, equalities::IntSet)
+  function EntropyConeLift(n::Vector{Int}, A::AbstractMatrix{T}, equalities::IntSet)
     if sum(ntodim(n)) != size(A, 2)
       error("The dimensions in n does not agree with the number of columns of A")
     end
     if !isempty(equalities) && last(equalities) > size(A, 1)
       error("Equalities should range from 1 to the number of rows of A")
     end
-    ine = SimpleHRepresentation(A, zeros(T, size(A, 1)), equalities)
+    ine = SimpleHRepresentation(A, spzeros(T, size(A, 1)), equalities)
     new(n, polyhedron(ine))
   end
 
 end
 
-EntropicConeLift{T<:Real}(n::Array{Int,1}, A::Array{T,2}) = EntropicConeLift(n, A, IntSet([]))
+EntropyConeLift{T<:Real}(n::Vector{Int}, A::AbstractMatrix{T}) = EntropyConeLift(n, A, IntSet([]))
 
-Base.convert{N, S<:Real,T<:Real}(::Type{EntropicConeLift{N, S}}, H::EntropicConeLift{N, T}) = EntropicConeLift{N, S}(H.n, Polyhedron{N, S}(H.poly))
+Base.convert{N, S<:Real,T<:Real}(::Type{EntropyConeLift{N, S}}, H::EntropyConeLift{N, T}) = EntropyConeLift{N, S}(H.n, Polyhedron{N, S}(H.poly))
 
-Base.convert{N, T<:Real}(::Type{EntropicConeLift{N, T}}, h::EntropicCone{N, T}) = EntropicConeLift([h.n], h.poly)
+Base.convert{N, T<:Real}(::Type{EntropyConeLift{N, T}}, h::EntropyCone{N, T}) = EntropyConeLift([h.n], h.poly)
 
-#Base.getindex{T<:Real}(H::EntropicConeLift{T}, i) = DualEntropyLift(H.n, H.A[i,:], i in H.equalities)
+#Base.getindex{T<:Real}(H::EntropyConeLift{T}, i) = DualEntropyLift(H.n, H.A[i,:], i in H.equalities)
 
-function offsetfor(h::EntropicConeLift, id::Integer)
+function offsetfor(h::EntropyConeLift, id::Integer)
   id == 1 ? 0 : sum(map(ntodim, h.n[1:(id-1)]))
 end
-function rangefor(h::EntropicConeLift, id::Integer)
+function rangefor(h::EntropyConeLift, id::Integer)
   offset = offsetfor(h, id)
   # See issue #16247 of JuliaLang/julia
   UnitRange{Int}(offset + (1:ntodim(h.n[id])))
 end
 
-promote_rule{N, T<:Real}(::Type{EntropicConeLift{N, T}}, ::Type{EntropicCone{N, T}}) = EntropicConeLift{N, T}
+promote_rule{N, T<:Real}(::Type{EntropyConeLift{N, T}}, ::Type{EntropyCone{N, T}}) = EntropyConeLift{N, T}
 
-function (*){N1, N2, T<:Real}(x::AbstractEntropicCone{N1, T}, y::AbstractEntropicCone{N2, T})
+function (*){N1, N2, T<:Real}(x::AbstractEntropyCone{N1, T}, y::AbstractEntropyCone{N2, T})
 # A = [x.A zeros(T, size(x.A, 1), N2); zeros(T, size(y.A, 1), N1) y.A]
 # equalities = copy(x.equalities)
 # for eq in y.equalities
 #   push!(equalities, size(x.A, 1) + eq)
 # end
-  EntropicConeLift{N1+N2, T}([x.n; y.n], x.poly * y.poly)
+  EntropyConeLift{N1+N2, T}([x.n; y.n], x.poly * y.poly)
 end
 
-function equalonsubsetsof!{N, T}(H::EntropicConeLift{N, T}, id1, id2, S::Unsigned, I::Unsigned=0x0, σ=i->i)
+function equalonsubsetsof!{N, T}(H::EntropyConeLift{N, T}, id1, id2, S::Unsigned, I::Unsigned=0x0, σ=i->i)
   if S == 0x0
     return
   end
   nrows = (1<<(card(S)))-1
-  A = zeros(T, nrows, N)
+  A = spzeros(T, nrows, N)
   cur = 1
   offset1 = offsetfor(H, id1)
   offset2 = offsetfor(H, id2)
@@ -65,12 +65,12 @@ function equalonsubsetsof!{N, T}(H::EntropicConeLift{N, T}, id1, id2, S::Unsigne
       cur += 1
     end
   end
-  ine = SimpleHRepresentation(A, zeros(T, nrows), IntSet(1:nrows))
+  ine = SimpleHRepresentation(A, spzeros(T, nrows), IntSet(1:nrows))
   intersect!(H, ine)
 end
-equalonsubsetsof!(H::EntropicConeLift, id1, id2, s::Signed) = equalonsubsetsof!(H, id1, id2, set(s))
+equalonsubsetsof!(H::EntropyConeLift, id1, id2, s::Signed) = equalonsubsetsof!(H, id1, id2, set(s))
 
-function equalvariable!{N, T}(h::EntropicConeLift{N, T}, id::Integer, i::Signed, j::Signed)
+function equalvariable!{N, T}(h::EntropyConeLift{N, T}, id::Integer, i::Signed, j::Signed)
   if id < 1 || id > length(h.n) || min(i,j) < 1 || max(i,j) > h.n[id]
     error("invalid")
   end
@@ -79,7 +79,7 @@ function equalvariable!{N, T}(h::EntropicConeLift{N, T}, id::Integer, i::Signed,
     return
   end
   nrows = 1 << (h.n[id]-1)
-  A = zeros(T, nrows, N)
+  A = spzeros(T, nrows, N)
   offset = offsetfor(h, id)
   cur = 1
   for S in 0x1:ntodim(h.n[id])
@@ -90,7 +90,7 @@ function equalvariable!{N, T}(h::EntropicConeLift{N, T}, id::Integer, i::Signed,
       cur += 1
     end
   end
-  intersect!(h, SimpleHRepresentation(A, zeros(T, nrows), IntSet(1:nrows)))
+  intersect!(h, SimpleHRepresentation(A, spzeros(T, nrows), IntSet(1:nrows)))
 end
 
 ninneradh(n, J::Unsigned, K::Unsigned) = n
@@ -99,7 +99,7 @@ nadh(n, J::Unsigned, K::Unsigned, adh::Type{Val{:Inner}}) = ninneradh(n, J, K)
 nadh(n, J::Unsigned, K::Unsigned, adh::Type{Val{:Self}}) = nselfadh(n, J, K)
 nadh(n, J::Unsigned, K::Unsigned, adh::Symbol) = nadh(n, J, K, Val{adh})
 
-function inneradhesivelift{N, T}(h::EntropicCone{N, T}, J::Unsigned, K::Unsigned)
+function inneradhesivelift{N, T}(h::EntropyCone{N, T}, J::Unsigned, K::Unsigned)
   cur = polymatroidcone(T, ninneradh(h.n, J, K))
   push!(cur, submodulareq(cur.n, J, K))
   lift = h * cur
@@ -108,11 +108,10 @@ function inneradhesivelift{N, T}(h::EntropicCone{N, T}, J::Unsigned, K::Unsigned
   equalonsubsetsof!(lift, 1, 2, K, I)
   lift
 end
-function selfadhesivelift{N, T}(h::EntropicCone{N, T}, J::Unsigned, I::Unsigned)
+function selfadhesivelift{N, T}(h::EntropyCone{N, T}, J::Unsigned, I::Unsigned)
   newn = nselfadh(h.n, J, I)
   K = setdiff(fullset(newn), fullset(h.n)) ∪ I
   cur = polymatroidcone(T, newn)
-  # FIXME fullset(h.n) is very important, clarify this !
   push!(cur, submodulareq(cur.n, fullset(h.n), K, I))
   lift = h * cur
   equalonsubsetsof!(lift, 1, 2, fullset(h.n))
@@ -132,6 +131,6 @@ function selfadhesivelift{N, T}(h::EntropicCone{N, T}, J::Unsigned, I::Unsigned)
   equalonsubsetsof!(lift, 1, 2, J, I, i->themap[i])
   lift
 end
-adhesivelift(h::EntropicCone, J::Unsigned, K::Unsigned, adh::Type{Val{:Inner}}) = inneradhesivelift(h, J, K)
-adhesivelift(h::EntropicCone, J::Unsigned, K::Unsigned, adh::Type{Val{:Self}}) = selfadhesivelift(h, J, K)
-adhesivelift(h::EntropicCone, J::Unsigned, K::Unsigned, adh::Symbol) = adhesivelift(h, J, K, Val{adh})
+adhesivelift(h::EntropyCone, J::Unsigned, K::Unsigned, adh::Type{Val{:Inner}}) = inneradhesivelift(h, J, K)
+adhesivelift(h::EntropyCone, J::Unsigned, K::Unsigned, adh::Type{Val{:Self}}) = selfadhesivelift(h, J, K)
+adhesivelift(h::EntropyCone, J::Unsigned, K::Unsigned, adh::Symbol) = adhesivelift(h, J, K, Val{adh})

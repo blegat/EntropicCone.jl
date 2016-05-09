@@ -9,9 +9,12 @@ cut = nonnegative(4, 1234)
 using Gurobi
 solver = Gurobi.GurobiSolver(OutputFlag=0)
 n = 4
+h = polymatroidcone(Float64, 4)
 #h = polymatroidcone(n)
 #cut = nonnegative(n, 1234)
 #c = -nonnegative(n, 1)
-@time root = getSDDPLattice(c, h, solver, 7, cut)
-@time sol = StochasticDualDynamicProgramming.SDDP(root, 10, :NoOptimalityCut, :All)
+@time root = getSDDPLattice(c, h, solver, 5, cut)
+#@time sol = StochasticDualDynamicProgramming.SDDP(root, 3, :NoOptimalityCut, :All)
+#@time root = getSDDPLattice(c, h, solver, 7, cut)
+#@time sol = StochasticDualDynamicProgramming.SDDP(root, 10, :NoOptimalityCut, :All)
 @show sol

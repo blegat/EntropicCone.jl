@@ -1,4 +1,4 @@
-module InformationTheory
+module EntropicCone
 
 using MathProgBase
 using Polyhedra
