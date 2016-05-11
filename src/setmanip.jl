@@ -56,6 +56,14 @@ function set(i::Integer)
   end
   ret
 end
+function set{S<:Integer}(I::AbstractArray{S})
+  ret = 0b0
+  for i in I
+    ret = union(ret, singleton(i))
+  end
+  ret
+end
+
 
 function myin(i::Signed, I::Unsigned)
   (singleton(i) & I) != 0
@@ -70,11 +78,11 @@ function card(S::Unsigned)
   Signed(sum)
 end
 
-function mymap(map, S::Unsigned, n)
+function mymap(map::Vector, S::Unsigned, n)
   T = 0x0
   for i in 1:n
     if myin(i, S)
-      T = T ∪ singleton(map(i))
+      T = T ∪ singleton(map[i])
     end
   end
   T

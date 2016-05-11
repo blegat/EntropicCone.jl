@@ -49,7 +49,7 @@ function (*){N1, N2, T<:Real}(x::AbstractEntropyCone{N1, T}, y::AbstractEntropyC
   EntropyConeLift{N1+N2, T}([x.n; y.n], x.poly * y.poly)
 end
 
-function equalonsubsetsof!{N, T}(H::EntropyConeLift{N, T}, id1, id2, S::Unsigned, I::Unsigned=0x0, σ=i->i)
+function equalonsubsetsof!{N, T}(H::EntropyConeLift{N, T}, id1, id2, S::Unsigned, I::Unsigned=0x0, σ=collect(1:H.n[id1]))
   if S == 0x0
     return
   end
@@ -128,7 +128,7 @@ function selfadhesivelift{N, T}(h::EntropyCone{N, T}, J::Unsigned, I::Unsigned)
     end
   end
   @assert cur == newn
-  equalonsubsetsof!(lift, 1, 2, J, I, i->themap[i])
+  equalonsubsetsof!(lift, 1, 2, J, I, themap)
   lift
 end
 adhesivelift(h::EntropyCone, J::Unsigned, K::Unsigned, adh::Type{Val{:Inner}}) = inneradhesivelift(h, J, K)
