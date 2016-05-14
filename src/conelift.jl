@@ -97,6 +97,7 @@ ninneradh(n, J::Unsigned, K::Unsigned) = n
 nselfadh(n, J::Unsigned, I::Unsigned) = n + card(setdiff(J, I))
 nadh(n, J::Unsigned, K::Unsigned, adh::Type{Val{:Inner}}) = ninneradh(n, J, K)
 nadh(n, J::Unsigned, K::Unsigned, adh::Type{Val{:Self}}) = nselfadh(n, J, K)
+nadh(n, J::Unsigned, K::Unsigned, adh::Type{Val{:NoAdh}}) = n
 nadh(n, J::Unsigned, K::Unsigned, adh::Symbol) = nadh(n, J, K, Val{adh})
 
 function inneradhesivelift{N, T}(h::EntropyCone{N, T}, J::Unsigned, K::Unsigned)

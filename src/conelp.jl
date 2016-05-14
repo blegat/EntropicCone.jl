@@ -1,20 +1,20 @@
 import MathProgBase.linprog
-export getSDDPLattice
+export getSDDPLattice, appendtoSDDPLattice!, updatemaxncuts!
 
 function MathProgBase.linprog(c::DualEntropy, h::EntropyCone, cut::DualEntropy)
   cuthrep = SimpleHRepresentation(cut.h', [1])
   MathProgBase.linprog(c.h, intersect(h.poly, cuthrep))
 end
 
-function getNLDS(c::DualEntropy, W, h, T, linset, solver)
+function getNLDS(c::DualEntropy, W, h, T, linset, solver, newcut::Symbol, maxncuts::Integer)
   K = [(:NonNeg, collect(setdiff(IntSet(1:size(W, 1)), linset))), (:Zero, collect(linset))]
   C = [(:NonNeg, collect(1:size(W, 2)))]
-  newcut = :InvalidateSolver
+  #newcut = :InvalidateSolver
   #newcut = :AddImmediately
-  NLDS{Float64}(W, h, T, K, C, c.h, solver, newcut)
+  NLDS{Float64}(W, h, T, K, C, c.h, solver, newcut, maxncuts)
 end
 
-function extractNLDS(c, h::EntropyConeLift, id, idp, solver)
+function extractNLDS(c, h::EntropyConeLift, id, idp, solver, newcut, maxncuts::Integer)
   hrep = SimpleHRepresentation(getinequalities(h.poly))
   idx  = rangefor(h, id)
   idxp = rangefor(h, idp)
@@ -40,7 +40,7 @@ function extractNLDS(c, h::EntropyConeLift, id, idp, solver)
 # getNLDS(c, W, h, T, newlinset, solver)
   W = hrep.A[:,idx]
   T = hrep.A[:,idxp]
-  getNLDS(c, W, hrep.b, T, hrep.linset, solver)
+  getNLDS(c, W, hrep.b, T, hrep.linset, solver, newcut, maxncuts)
 end
 
 function next_perm(arr)
@@ -65,8 +65,20 @@ function next_perm(arr)
   end
 end
 
-function addchildren!(node, n, allnodes, solver, max_n)
+function addchildren!(node::SDDPNode, n::Int, old::Bool, oldnodes, newnodes, solver, max_n::Int, newcut::Symbol, maxncuts::Vector{Int})
   children = Vector{SDDPNode{Float64}}()
+
+  function addchild(J::Unsigned,K::Unsigned,adh::Symbol,T=speye(Int(ntodim(n))))
+    if (n,J,K,adh) in keys(oldnodes)
+      if !old
+        push!(children, oldnodes[(n,J,K,adh)])
+        push!(childT, T)
+      end
+    else
+      push!(children, getSDDPNode(oldnodes, newnodes, n, J, K, adh, node, solver, max_n, newcut, maxncuts))
+      push!(childT, T)
+    end
+  end
 
   if true
     childT = Vector{AbstractMatrix{Float64}}()
@@ -75,26 +87,20 @@ function addchildren!(node, n, allnodes, solver, max_n)
     for i in 1:n-1
       for j in i+1:min(n, i+dn)
         I = set(1:i)
-        #@show bits(I)
         J = set(1:j)
-        #@show bits(J)
-        push!(children, getSDDPNode(allnodes, n, J, I, :Self, node, solver, max_n))
-        push!(childT, speye(Int(ntodim(n))))
+        addchild(J,I,:Self)
         σ = collect(1:n)
         done = [(I,J)]
         while next_perm(σ)
-          #@show σ
           Iperm = mymap(σ, I, n)
           Jperm = mymap(σ, J, n)
           if !((Iperm, Jperm) in done)
-            #@show Iperm, Jperm
             σinv = collect(1:n)[σ]
             σi = map(I->mymap(σinv, I, n), 0x1:ntodim(n))
             push!(done, (Iperm, Jperm))
             # Why transpose ?
             P = sparse(Vector{Int}(σi), 1:N, 1, N, N)'
-            push!(children, getSDDPNode(allnodes, n, J, I, :Self, node, solver, max_n))
-            push!(childT, P)
+            addchild(J,I,:Self,P)
           end
         end
       end
@@ -118,7 +124,7 @@ function addchildren!(node, n, allnodes, solver, max_n)
             continue
           end
           if nadh(n, J, K, adh) <= max_n
-            push!(children, getSDDPNode(allnodes, n, J, K, adh, node, solver, max_n))
+            addchild(J,K,adh)
           end
         end
       end
@@ -127,45 +133,60 @@ function addchildren!(node, n, allnodes, solver, max_n)
   if !isempty(children)
     # the probability does not matter
     # no optimality cut needed since only the root has an objective
-    setchildren!(node, children, ones(length(children)) / length(children), :NoOptimalityCut, childT)
+    if old
+      # FIXME proba
+      appendchildren!(node, children, ones(length(children)) / length(children), childT)
+    else
+      setchildren!(node, children, ones(length(children)) / length(children), :NoOptimalityCut, childT)
+    end
   end
 end
 
-function getSDDPNode(allnodes, np, Jp, Kp, adhp, parent, solver, max_n)
-  if isnull(allnodes[np,Jp,Kp])
-    @show (np, Jp, Kp)
+function getSDDPNode(oldnodes, newnodes, np, Jp, Kp, adhp, parent, solver, max_n, newcut, maxncuts)
+  @assert !((np,Jp,Kp,adhp) in keys(oldnodes))
+  if !((np,Jp,Kp,adhp) in keys(newnodes))
     n = nadh(np, Jp, Kp, adhp)
     #h = polymatroidcone(np)
     h = EntropyCone{Int(ntodim(np)), Float64}(np)
     lift = adhesivelift(h, Jp, Kp, adhp)
     c = constdualentropy(n, 0)
-    nlds = extractNLDS(c, lift, 2, 1, solver)
+    nlds = extractNLDS(c, lift, 2, 1, solver, newcut, maxncuts[n])
     newnode = SDDPNode(nlds, parent)
-    allnodes[np,Jp,Kp] = newnode
-    addchildren!(newnode, n, allnodes, solver, max_n)
+    newnodes[(np,Jp,Kp,adhp)] = newnode
+    addchildren!(newnode, n, false, oldnodes, newnodes, solver, max_n, newcut, maxncuts)
   end
-  get(allnodes[np,Jp,Kp])
+  newnodes[(np,Jp,Kp,adhp)]
 end
 
-function getRootNode(c::DualEntropy, H::EntropyCone, cut::DualEntropy, allnodes, solver, max_n)
+function getRootNode(c::DualEntropy, H::EntropyCone, cut::DualEntropy, newnodes, solver, max_n::Integer, newcut::Symbol, maxncuts::Vector)
   cuthrep = SimpleHRepresentation(cut.h', [1])
   hrep = SimpleHRepresentation(getinequalities(intersect(H.poly, cuthrep)))
   W = hrep.A
   h = hrep.b
   T = spzeros(Float64, length(h), 0)
-  nlds = getNLDS(c, W, h, T, hrep.linset, solver)
-# K = [(:NonNeg, collect(1:size(W, 1)))]
-# C = [(:NonNeg, collect(1:size(W, 2)))]
-# c = c.h
-# nlds = NLDS{Float64}(W, h, T, K, C, c, solver)
+  nlds = getNLDS(c, W, h, T, hrep.linset, solver, newcut, -1)
   root = SDDPNode(nlds, nothing)
-  addchildren!(root, H.n, allnodes, solver, max_n)
+  newnodes[(H.n,0x0,0x0,:NoAdh)] = root
+  oldnodes = Dict{Tuple{Int,Unsigned,Unsigned,Symbol},SDDPNode{Float64}}()
+  addchildren!(root, H.n, false, oldnodes, newnodes, solver, max_n, newcut, maxncuts)
   root
 end
 
-function getSDDPLattice(c::DualEntropy, h::EntropyCone, solver, max_n, cut::DualEntropy)
+function getSDDPLattice(c::DualEntropy, h::EntropyCone, solver, max_n, cut::DualEntropy, newcut::Symbol, maxncuts::Vector)
   # allnodes[n][J][K]: if K ⊆ J, it is self-adhesivity, otherwise it is inner-adhesivity
-  allnodes = Array{Nullable{SDDPNode{Float64}},3}(max_n, Int(ntodim(max_n)), Int(ntodim(max_n)))
-  allnodes[:] = nothing
-  @time getRootNode(c, h, cut, allnodes, solver, max_n)
+  allnodes = Dict{Tuple{Int,Unsigned,Unsigned,Symbol},SDDPNode{Float64}}()
+  @time root = getRootNode(c, h, cut, allnodes, solver, max_n, newcut, maxncuts)
+  root, allnodes
+end
+function appendtoSDDPLattice!(oldnodes, solver, max_n, newcut, maxncuts::Vector)
+  newnodes = Dict{Tuple{Int,Unsigned,Unsigned,Symbol},SDDPNode{Float64}}()
+  for ((n,J,K,adh), node) in oldnodes
+    addchildren!(node, nadh(n,J,K,adh), true, oldnodes, newnodes, solver, max_n, newcut, maxncuts)
+  end
+  merge!(oldnodes, newnodes)
+end
+function updatemaxncuts!(allnodes, maxncuts::Vector)
+  for ((n,J,K,adh), node) in allnodes
+    StochasticDualDynamicProgramming.updatemaxncuts!(node.nlds, maxncuts[nadh(n,J,K,adh)])
+  end
 end
