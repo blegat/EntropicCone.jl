@@ -45,6 +45,10 @@ function fulldim(h::AbstractEntropyCone)
   fulldim(h.poly)
 end
 
+function indset(h::EntropyCone)
+  indset(h.n)
+end
+
 function getinequalities(h::EntropyCone)
   removeredundantinequalities!(h.poly)
   ine = getinequalities(h.poly)
@@ -116,11 +120,11 @@ function polymatroidcone{T}(::Type{T}, n::Integer, minimal = true)
   A = spzeros(T, n_nonnegative + n_nondecreasing + n_submodular, ntodim(n))
   for j = 1:n
     for k = (j+1):n
-      A[offset_submodular+cur_submodular, :] = submodular(n, set(j), set(k), 0x0)
+      A[offset_submodular+cur_submodular, :] = submodular(n, set(j), set(k))
       cur_submodular += 1
     end
   end
-  for I = 1:ntodim(n)
+  for I = indset(n)
     if !minimal
       A[offset_nonnegative+cur_nonnegative, :] = nonnegative(n, I)
       cur_nonnegative += 1
@@ -140,6 +144,9 @@ function polymatroidcone{T}(::Type{T}, n::Integer, minimal = true)
       end
     end
   end
+  @assert cur_nonnegative == n_nonnegative+1
+  @assert cur_nondecreasing == n_nondecreasing+1
+  @assert cur_submodular == n_submodular+1
   EntropyCone(n, A)
 end
 polymatroidcone(n::Integer, minimal = true) = polymatroidcone(Int, n, true)

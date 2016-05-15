@@ -6,10 +6,14 @@ export DualEntropy, DualEntropyLift, nonnegative, nondecreasing, submodular, sub
 
 function ntodim(n::Int)
   # It will works with bitsets which are unsigned
-  Unsigned((1 << n) - 1)
+  fullset(n)
 end
 function ntodim(n::Vector{Int})
   map(ntodim, n)
+end
+
+function indset(n::Int)
+  setsto(ntodim(n))
 end
 
 function dimton(N)
@@ -21,6 +25,10 @@ function dimton(N)
 end
 
 abstract EntropyVector{N, T<:Real} <: AbstractArray{T, 1}
+
+function indset(h::EntropyVector, id::Int)
+  indset(h.n[id])
+end
 
 Base.size{N}(h::EntropyVector{N}) = (N,)
 Base.linearindexing(::Type{EntropyVector}) = Base.LinearFast()
@@ -35,7 +43,7 @@ Base.setindex!{N, T}(h::EntropyVector{N, T}, v::T, i::Int) = h.h[i] = v
 
 #function entropyof(p::AbstractArray{Real, n})
 #  println(n)
-#  for i in 0b1:ntodim(n)
+#  for i in indset(n)
 #  end
 #end
 
@@ -195,7 +203,7 @@ end
 
 Base.convert{N, T<:Real,S<:Real}(::Type{PrimalEntropy{N, T}}, h::PrimalEntropy{N, S}) = PrimalEntropy(Array{T}(h.h))
 
-function subpdf{n}(p::Array{Float64,n}, S::Unsigned)
+function subpdf{n}(p::Array{Float64,n}, S::EntropyIndex)
   cpy = copy(p)
   for j = 1:n
     if !myin(j, S)
@@ -209,7 +217,7 @@ subpdf{n}(p::Array{Float64,n}, s::Signed) = subpdf(p, set(s))
 
 function entropyfrompdf{n}(p::Array{Float64,n})
   h = PrimalEntropy{Int(ntodim(n)), Float64}(n, 1)
-  for i = 0x1:ntodim(n)
+  for i = indset(n)
     h[i] = -sum(map(xlogx, subpdf(p, i)))
   end
   h
@@ -252,26 +260,26 @@ function dualentropywith(n, pos, neg)
   ret = constdualentropy(n, 0)
   # I use -= and += in case some I is in pos and neg
   for I in pos
-    if I != 0x0
+    if I != emptyset()
       ret[I] += 1
     end
   end
   for I in neg
-    if I != 0x0
+    if I != emptyset()
       ret[I] -= 1
     end
   end
   ret
 end
 
-function nonnegative(n, S::Unsigned)
+function nonnegative(n, S::EntropyIndex)
   dualentropywith(n, [S], [])
 end
 function nonnegative(n, s::Signed)
   nonnegative(n, set(s))
 end
 
-function nondecreasing(n, S::Unsigned, T::Unsigned)
+function nondecreasing(n, S::EntropyIndex, T::EntropyIndex)
   T = union(S, T)
   x = dualentropywith(n, [T], [S]) # fix of weird julia bug
   print("")
@@ -281,22 +289,22 @@ function nondecreasing(n, s::Signed, t::Signed)
   nondecreasing(n, set(s), set(t))
 end
 
-function submodular(n, S::Unsigned, T::Unsigned, I::Unsigned)
+function submodular(n, S::EntropyIndex, T::EntropyIndex, I::EntropyIndex)
   S = union(S, I)
   T = union(T, I)
   U = union(S, T)
   dualentropywith(n, [S, T], [U, I])
 end
-submodular(n, S::Unsigned, T::Unsigned) = submodular(n, S, T, S ∩ T)
+submodular(n, S::EntropyIndex, T::EntropyIndex) = submodular(n, S, T, S ∩ T)
 submodular(n, s::Signed, t::Signed, i::Signed) = submodular(n, set(s), set(t), set(i))
 submodular(n, s::Signed, t::Signed) = submodular(n, set(s), set(t))
 
-function submodulareq(n, S::Unsigned, T::Unsigned, I::Unsigned)
+function submodulareq(n, S::EntropyIndex, T::EntropyIndex, I::EntropyIndex)
   h = submodular(n, S, T, I)
   h.equality = true
   h
 end
-submodulareq(n, S::Unsigned, T::Unsigned) = submodulareq(n, S, T, S ∩ T)
+submodulareq(n, S::EntropyIndex, T::EntropyIndex) = submodulareq(n, S, T, S ∩ T)
 submodulareq(n, s::Signed, t::Signed, i::Signed) = submodulareq(n, set(s), set(t), set(i))
 submodulareq(n, s::Signed, t::Signed) = submodulareq(n, set(s), set(t))
 
@@ -309,7 +317,7 @@ function ingleton(n, i, j, k, l)
   ij = union(I, J)
   kl = union(K, L)
   ijkl = union(ij, kl)
-  for s in 0b1:ntodim(n)
+  for s in indset(n)
     if issubset(s, ijkl) && card(s) == 2 && s != ij
       pos = [pos; s]
     end
@@ -330,9 +338,9 @@ function ingleton(i, j)
 end
 
 # Classical Entropy Vectors
-function cardminusentropy(n, I::Unsigned)
+function cardminusentropy(n, I::EntropyIndex)
   h = constprimalentropy(n, 0)
-  for J in 0b1:ntodim(n)
+  for J in indset(n)
     h[J] = card(setdiff(J, I))
   end
   return h
@@ -340,7 +348,7 @@ end
 cardminusentropy(n, i::Signed) = cardminusentropy(n, set(i))
 
 function cardentropy(n)
-  return cardminusentropy(n, 0b0)
+  return cardminusentropy(n, emptyset())
 end
 
 #min(h1, h2) gives Array{Any,1} instead of EntropyVector :(
@@ -348,11 +356,11 @@ function mymin{N, T<:Real}(h1::PrimalEntropy{N, T}, h2::PrimalEntropy{N, T}) # F
   PrimalEntropy{N, T}(min(h1.h, h2.h))
 end
 
-function invalidfentropy(S::Unsigned)
+function invalidfentropy(S::EntropyIndex)
   n = 4
   #ret = min(constentropy(n, 4), 2 * cardentropy(n)) #can't make it work
   h = mymin(constprimalentropy(n, 4), cardentropy(n) * 2)
-  for i in 0b1:ntodim(n)
+  for i in indset(n)
     if i != S && card(i) == 2
       h[i] = 3
     end
@@ -364,7 +372,7 @@ function invalidfentropy(s::Signed)
   return invalidfentropy(set(s))
 end
 
-function matusrentropy(t, S::Unsigned)
+function matusrentropy(t, S::EntropyIndex)
   n = 4
   h = mymin(constprimalentropy(n, t), cardminusentropy(n, S))
   return h
@@ -394,7 +402,7 @@ function Base.show(io::IO, h::EntropyVector)
   offset = 0
   for i in eachindex(collect(h.n))
     for l in h.n[i]:-1:1
-      for j in 0b1:ntodim(h.n[i])
+      for j in indset(h, i)
         if card(j) == l
           bitmap = bits(j)[end-h.n[i]+1:end]
           val = h.h[offset+j]

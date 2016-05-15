@@ -32,10 +32,13 @@ Base.convert{N, T<:Real}(::Type{EntropyConeLift{N, T}}, h::EntropyCone{N, T}) = 
 function offsetfor(h::EntropyConeLift, id::Integer)
   id == 1 ? 0 : sum(map(ntodim, h.n[1:(id-1)]))
 end
+function indset(h::AbstractEntropyCone, id::Integer)
+  indset(h.n[id])
+end
 function rangefor(h::EntropyConeLift, id::Integer)
   offset = offsetfor(h, id)
   # See issue #16247 of JuliaLang/julia
-  UnitRange{Int}(offset + (1:ntodim(h.n[id])))
+  UnitRange{Int}(offset + indset(h, id))
 end
 
 promote_rule{N, T<:Real}(::Type{EntropyConeLift{N, T}}, ::Type{EntropyCone{N, T}}) = EntropyConeLift{N, T}
@@ -49,8 +52,8 @@ function (*){N1, N2, T<:Real}(x::AbstractEntropyCone{N1, T}, y::AbstractEntropyC
   EntropyConeLift{N1+N2, T}([x.n; y.n], x.poly * y.poly)
 end
 
-function equalonsubsetsof!{N, T}(H::EntropyConeLift{N, T}, id1, id2, S::Unsigned, I::Unsigned=0x0, σ=collect(1:H.n[id1]))
-  if S == 0x0
+function equalonsubsetsof!{N, T}(H::EntropyConeLift{N, T}, id1, id2, S::EntropyIndex, I::EntropyIndex=emptyset(), σ=collect(1:H.n[id1]))
+  if S == emptyset()
     return
   end
   nrows = (1<<(card(S)))-1
@@ -58,7 +61,7 @@ function equalonsubsetsof!{N, T}(H::EntropyConeLift{N, T}, id1, id2, S::Unsigned
   cur = 1
   offset1 = offsetfor(H, id1)
   offset2 = offsetfor(H, id2)
-  for K in 0x1:S
+  for K in setsto(S)
     if K ⊆ S && !(K ⊆ I)
       A[cur, offset1+K] = 1
       A[cur, offset2+mymap(σ, K, H.n[id2])] = -1
@@ -82,7 +85,7 @@ function equalvariable!{N, T}(h::EntropyConeLift{N, T}, id::Integer, i::Signed, 
   A = spzeros(T, nrows, N)
   offset = offsetfor(h, id)
   cur = 1
-  for S in 0x1:ntodim(h.n[id])
+  for S in indset(h.n, id)
     if myin(i, S)
       A[cur, offset+S] = 1
       Q = union(setdiff(S, set(i)), set(j))
@@ -93,14 +96,14 @@ function equalvariable!{N, T}(h::EntropyConeLift{N, T}, id::Integer, i::Signed, 
   intersect!(h, SimpleHRepresentation(A, spzeros(T, nrows), IntSet(1:nrows)))
 end
 
-ninneradh(n, J::Unsigned, K::Unsigned) = n
-nselfadh(n, J::Unsigned, I::Unsigned) = n + card(setdiff(J, I))
-nadh(n, J::Unsigned, K::Unsigned, adh::Type{Val{:Inner}}) = ninneradh(n, J, K)
-nadh(n, J::Unsigned, K::Unsigned, adh::Type{Val{:Self}}) = nselfadh(n, J, K)
-nadh(n, J::Unsigned, K::Unsigned, adh::Type{Val{:NoAdh}}) = n
-nadh(n, J::Unsigned, K::Unsigned, adh::Symbol) = nadh(n, J, K, Val{adh})
+ninneradh(n, J::EntropyIndex, K::EntropyIndex) = n
+nselfadh(n, J::EntropyIndex, I::EntropyIndex) = n + card(setdiff(J, I))
+nadh(n, J::EntropyIndex, K::EntropyIndex, adh::Type{Val{:Inner}}) = ninneradh(n, J, K)
+nadh(n, J::EntropyIndex, K::EntropyIndex, adh::Type{Val{:Self}}) = nselfadh(n, J, K)
+nadh(n, J::EntropyIndex, K::EntropyIndex, adh::Type{Val{:NoAdh}}) = n
+nadh(n, J::EntropyIndex, K::EntropyIndex, adh::Symbol) = nadh(n, J, K, Val{adh})
 
-function inneradhesivelift{N, T}(h::EntropyCone{N, T}, J::Unsigned, K::Unsigned)
+function inneradhesivelift{N, T}(h::EntropyCone{N, T}, J::EntropyIndex, K::EntropyIndex)
   cur = polymatroidcone(T, ninneradh(h.n, J, K))
   push!(cur, submodulareq(cur.n, J, K))
   lift = h * cur
@@ -109,7 +112,7 @@ function inneradhesivelift{N, T}(h::EntropyCone{N, T}, J::Unsigned, K::Unsigned)
   equalonsubsetsof!(lift, 1, 2, K, I)
   lift
 end
-function selfadhesivelift{N, T}(h::EntropyCone{N, T}, J::Unsigned, I::Unsigned)
+function selfadhesivelift{N, T}(h::EntropyCone{N, T}, J::EntropyIndex, I::EntropyIndex)
   newn = nselfadh(h.n, J, I)
   K = setdiff(fullset(newn), fullset(h.n)) ∪ I
   cur = polymatroidcone(T, newn)
@@ -132,6 +135,6 @@ function selfadhesivelift{N, T}(h::EntropyCone{N, T}, J::Unsigned, I::Unsigned)
   equalonsubsetsof!(lift, 1, 2, J, I, themap)
   lift
 end
-adhesivelift(h::EntropyCone, J::Unsigned, K::Unsigned, adh::Type{Val{:Inner}}) = inneradhesivelift(h, J, K)
-adhesivelift(h::EntropyCone, J::Unsigned, K::Unsigned, adh::Type{Val{:Self}}) = selfadhesivelift(h, J, K)
-adhesivelift(h::EntropyCone, J::Unsigned, K::Unsigned, adh::Symbol) = adhesivelift(h, J, K, Val{adh})
+adhesivelift(h::EntropyCone, J::EntropyIndex, K::EntropyIndex, adh::Type{Val{:Inner}}) = inneradhesivelift(h, J, K)
+adhesivelift(h::EntropyCone, J::EntropyIndex, K::EntropyIndex, adh::Type{Val{:Self}}) = selfadhesivelift(h, J, K)
+adhesivelift(h::EntropyCone, J::EntropyIndex, K::EntropyIndex, adh::Symbol) = adhesivelift(h, J, K, Val{adh})

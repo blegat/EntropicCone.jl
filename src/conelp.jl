@@ -68,7 +68,7 @@ end
 function addchildren!(node::SDDPNode, n::Int, old::Bool, oldnodes, newnodes, solver, max_n::Int, newcut::Symbol, maxncuts::Vector{Int})
   children = Vector{SDDPNode{Float64}}()
 
-  function addchild(J::Unsigned,K::Unsigned,adh::Symbol,T=speye(Int(ntodim(n))))
+  function addchild(J::EntropyIndex,K::EntropyIndex,adh::Symbol,T=speye(Int(ntodim(n))))
     if (n,J,K,adh) in keys(oldnodes)
       if !old
         push!(children, oldnodes[(n,J,K,adh)])
@@ -96,7 +96,7 @@ function addchildren!(node::SDDPNode, n::Int, old::Bool, oldnodes, newnodes, sol
           Jperm = mymap(σ, J, n)
           if !((Iperm, Jperm) in done)
             σinv = collect(1:n)[σ]
-            σi = map(I->mymap(σinv, I, n), 0x1:ntodim(n))
+            σi = map(I->mymap(σinv, I, n), indset(n))
             push!(done, (Iperm, Jperm))
             # Why transpose ?
             P = sparse(Vector{Int}(σi), 1:N, 1, N, N)'
@@ -108,8 +108,8 @@ function addchildren!(node::SDDPNode, n::Int, old::Bool, oldnodes, newnodes, sol
   else
     childT = nothing
     for adh in [:Self, :Inner]
-      for J in 0x1:ntodim(n)
-        for K in 0x1:ntodim(n)
+      for J in indset(n)
+        for K in indset(n)
           if J == K ||
             (adh == :Self && !(K ⊆ J)) ||
             #(adh == :Self && !(fullset(n) ⊆ J)) || # Don't do that, Z-Y is not found with max_n = 5 and no inner otherwise
@@ -166,20 +166,20 @@ function getRootNode(c::DualEntropy, H::EntropyCone, cut::DualEntropy, newnodes,
   T = spzeros(Float64, length(h), 0)
   nlds = getNLDS(c, W, h, T, hrep.linset, solver, newcut, -1)
   root = SDDPNode(nlds, nothing)
-  newnodes[(H.n,0x0,0x0,:NoAdh)] = root
-  oldnodes = Dict{Tuple{Int,Unsigned,Unsigned,Symbol},SDDPNode{Float64}}()
+  newnodes[(H.n,emptyset(),emptyset(),:NoAdh)] = root
+  oldnodes = Dict{Tuple{Int,EntropyIndex,EntropyIndex,Symbol},SDDPNode{Float64}}()
   addchildren!(root, H.n, false, oldnodes, newnodes, solver, max_n, newcut, maxncuts)
   root
 end
 
 function getSDDPLattice(c::DualEntropy, h::EntropyCone, solver, max_n, cut::DualEntropy, newcut::Symbol, maxncuts::Vector)
   # allnodes[n][J][K]: if K ⊆ J, it is self-adhesivity, otherwise it is inner-adhesivity
-  allnodes = Dict{Tuple{Int,Unsigned,Unsigned,Symbol},SDDPNode{Float64}}()
+  allnodes = Dict{Tuple{Int,EntropyIndex,EntropyIndex,Symbol},SDDPNode{Float64}}()
   @time root = getRootNode(c, h, cut, allnodes, solver, max_n, newcut, maxncuts)
   root, allnodes
 end
 function appendtoSDDPLattice!(oldnodes, solver, max_n, newcut, maxncuts::Vector)
-  newnodes = Dict{Tuple{Int,Unsigned,Unsigned,Symbol},SDDPNode{Float64}}()
+  newnodes = Dict{Tuple{Int,EntropyIndex,EntropyIndex,Symbol},SDDPNode{Float64}}()
   for ((n,J,K,adh), node) in oldnodes
     addchildren!(node, nadh(n,J,K,adh), true, oldnodes, newnodes, solver, max_n, newcut, maxncuts)
   end

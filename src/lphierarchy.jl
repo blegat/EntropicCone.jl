@@ -1,8 +1,8 @@
 function enforceadhesivity{N, ET<:Real}(h::EntropyCone{N, ET})
   lift = h
   last = 1
-  for S in 0x1:UInt(N)
-    for T in 0x1:UInt(N)
+  for S in indset(h)
+    for T in indset(h)
       if setdiff(S, T) == S # no intersection
         I = setdiff(setdiff(ntodim(h.n), S), T)
         cur = copy(h)

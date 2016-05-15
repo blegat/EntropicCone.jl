@@ -1,5 +1,7 @@
 export singleton, set, card, fullset
 
+typealias EntropyIndex UInt
+
 # Set Manipulation
 # function subsets(S)
 #   if S == 0
@@ -21,35 +23,35 @@ export singleton, set, card, fullset
 #   return ret
 # end
 
-function Base.setdiff(S::Unsigned, I::Unsigned)
+function Base.setdiff(S::EntropyIndex, I::EntropyIndex)
   S & (~I)
 end
 
 # S ∪ T
-function Base.union(S::Unsigned, T::Unsigned)
+function Base.union(S::EntropyIndex, T::EntropyIndex)
   S | T
 end
 
 # S ∩ T
-function Base.intersect(S::Unsigned, T::Unsigned)
+function Base.intersect(S::EntropyIndex, T::EntropyIndex)
   S & T
 end
 
 # S ⊆ T
-function issubset(S::Unsigned, T::Unsigned)
+function issubset(S::EntropyIndex, T::EntropyIndex)
   Base.setdiff(S, T) == zero(S)
 end
 
 function singleton(i::Integer)
-  0b1 << (i-1)
+  EntropyIndex(1) << (i-1)
 end
 
 function fullset(n::Integer)
-  (0x1 << n) - 0x1
+  (EntropyIndex(1) << n) - EntropyIndex(1)
 end
 
 function set(i::Integer)
-  ret = 0b0
+  ret = emptyset()
   while i > 0
     ret = union(ret, singleton(i % 10))
     i = div(i, 10)
@@ -57,7 +59,7 @@ function set(i::Integer)
   ret
 end
 function set{S<:Integer}(I::AbstractArray{S})
-  ret = 0b0
+  ret = emptyset()
   for i in I
     ret = union(ret, singleton(i))
   end
@@ -65,11 +67,11 @@ function set{S<:Integer}(I::AbstractArray{S})
 end
 
 
-function myin(i::Signed, I::Unsigned)
+function myin(i::Signed, I::EntropyIndex)
   (singleton(i) & I) != 0
 end
 
-function card(S::Unsigned)
+function card(S::EntropyIndex)
   sum = 0
   while S > 0
     sum += S & 1
@@ -78,8 +80,16 @@ function card(S::Unsigned)
   Signed(sum)
 end
 
-function mymap(map::Vector, S::Unsigned, n)
-  T = 0x0
+function emptyset()
+  EntropyIndex(0)
+end
+
+function setsto(J::EntropyIndex)
+  EntropyIndex(1):J
+end
+
+function mymap(map::Vector, S::EntropyIndex, n)
+  T = emptyset()
   for i in 1:n
     if myin(i, S)
       T = T ∪ singleton(map[i])

@@ -16,7 +16,7 @@ function partialin{NE, NC, S, T}(h::AbstractPrimalEntropy{NE, S}, H::AbstractEnt
   offseth = 0
   offsetsH = [0; cumsum(map(ntodim, H.n))]
   for i in eachindex(collect(h.n)) # use of collect in case h.n is scalar
-    for j = 1:ntodim(h.n[i])
+    for j = indset(h, i)
       A[offseth+j,offsetsH[h.liftid[i]]+j] = 1
     end
     offseth += ntodim(h.n[i])
