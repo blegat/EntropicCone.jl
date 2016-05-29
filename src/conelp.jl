@@ -134,8 +134,8 @@ function addchildren!(node::SDDPNode, n::Int, old::Bool, oldnodes, newnodes, sol
     # the probability does not matter
     # no optimality cut needed since only the root has an objective
     if old
-      # FIXME proba
-      appendchildren!(node, children, ones(length(children)) / length(children), childT)
+      totalnchild = length(children) + length(node.children)
+      appendchildren!(node, children, ones(totalnchild) / totalnchild, childT)
     else
       setchildren!(node, children, ones(length(children)) / length(children), :NoOptimalityCut, childT)
     end
@@ -161,8 +161,8 @@ end
 function getRootNode(c::DualEntropy, H::EntropyCone, cut::DualEntropy, newnodes, solver, max_n::Integer, newcut::Symbol, maxncuts::Vector)
   cuthrep = SimpleHRepresentation(cut.h', [1])
   hrep = SimpleHRepresentation(getinequalities(intersect(H.poly, cuthrep)))
-  W = hrep.A
-  h = hrep.b
+  W = sparse(hrep.A) # FIXME I shouldn't have to do sparse
+  h = sparsevec(hrep.b) # FIXME I shouldn't have to do sparse
   T = spzeros(Float64, length(h), 0)
   nlds = getNLDS(c, W, h, T, hrep.linset, solver, newcut, -1)
   root = SDDPNode(nlds, nothing)
