@@ -1,6 +1,7 @@
 export EntropyVector
 export PrimalEntropy, cardminusentropy, cardentropy, invalidfentropy, matusrentropy, entropyfrompdf, subpdf, toTikz
 export DualEntropy, DualEntropyLift, nonnegative, nondecreasing, submodular, submodulareq, ingleton
+import Base.isless
 
 # Entropy Vector
 
@@ -28,6 +29,18 @@ abstract EntropyVector{N, T<:Real} <: AbstractArray{T, 1}
 
 function indset(h::EntropyVector, id::Int)
   indset(h.n[id])
+end
+
+#Store vectors as tuple to reuse their `isless'
+function isless{N}(h::EntropyVector{N}, g::EntropyVector{N})
+  for i in 1:length(h.h)
+    if h.h[i] < g.h[i]
+      return true
+    elseif h.h[i] > g.h[i]
+      return false
+    end
+  end
+  return false
 end
 
 Base.size{N}(h::EntropyVector{N}) = (N,)

@@ -1,4 +1,5 @@
-export fulldim, EntropyCone, polymatroidcone, redundant, getinequalities, getextremerays, tight!
+import Polyhedra.fulldim
+export EntropyCone, polymatroidcone, redundant, getinequalities, getextremerays, tight!
 
 # Entropy Cone
 
@@ -21,7 +22,7 @@ type EntropyCone{N, T<:Real} <: AbstractEntropyCone{N, T}
     new(dimton(N), p)
   end
 
-  function EntropyCone(n::Int, A::AbstractMatrix{T} = spzeros(T, 0, N), equalities::IntSet = IntSet())
+  function EntropyCone(n::Int, A::AbstractMatrix{T} = spzeros(T, 0, N), equalities::IntSet = IntSet(), lib=nothing)
     if ntodim(n) != size(A, 2)
       error("The dimension in n does not agree with the number of columns of A")
     end
@@ -29,13 +30,35 @@ type EntropyCone{N, T<:Real} <: AbstractEntropyCone{N, T}
       error("Equalities should range from 1 to the number of rows of A")
     end
     ine = SimpleHRepresentation(-A, spzeros(T, size(A, 1)), equalities)
-    new(n, polyhedron(ine))
+    if lib === nothing
+      p = polyhedron(ine)
+    else
+      p = polyhedron(ine, lib)
+    end
+    new(n, p)
   end
 
 end
 
-EntropyCone{T<:AbstractFloat}(n::Int, A::AbstractMatrix{T}) = EntropyCone{size(A, 2), Float64}(n, AbstractMatrix{Float64}(A), IntSet([]))
-EntropyCone{T<:Real}(n::Int, A::AbstractMatrix{T}) = EntropyCone{size(A, 2), Rational{BigInt}}(n, AbstractMatrix{Rational{BigInt}}(A), IntSet())
+function EntropyCone{T<:Real}(n::Int, A::AbstractMatrix{T} = spzeros(T, 0, N), equalities::IntSet = IntSet(), lib=nothing)
+  if ntodim(n) != size(A, 2)
+    error("The dimension in n does not agree with the number of columns of A")
+  end
+  if !isempty(equalities) && last(equalities) > size(A, 1)
+    error("Equalities should range from 1 to the number of rows of A")
+  end
+  ine = SimpleHRepresentation(-A, spzeros(T, size(A, 1)), equalities)
+  if lib === nothing
+    p = polyhedron(ine)
+  else
+    p = polyhedron(ine, lib)
+  end
+  EntropyCone{fulldim(p), eltype(p)}(n, p)
+end
+
+
+#EntropyCone{T<:AbstractFloat}(n::Int, A::AbstractMatrix{T}) = EntropyCone{size(A, 2), Float64}(n, AbstractMatrix{Float64}(A), IntSet([]))
+#EntropyCone{T<:Real}(n::Int, A::AbstractMatrix{T}) = EntropyCone{size(A, 2), Rational{BigInt}}(n, AbstractMatrix{Rational{BigInt}}(A), IntSet())
 
 #Base.getindex{T<:Real}(H::EntropyCone{T}, i) = DualEntropy(H.n, H.A[i,:], i in H.equalities) # FIXME
 
@@ -97,7 +120,7 @@ function Base.intersect(h1::AbstractEntropyCone, h2::AbstractEntropyCone)
   typeof(h1)(h1.n, intersect(h1.poly, h2.poly))
 end
 
-function polymatroidcone{T}(::Type{T}, n::Integer, minimal = true)
+function polymatroidcone{T}(::Type{T}, n::Integer, lib = nothing, minimal = true)
   # 2^n-1           nonnegative   inequalities H(S) >= 0
   # n*2^(n-1)-n     nondecreasing inequalities H(S) >= H(T) https://oeis.org/A058877
   # n*(n+1)*2^(n-2) submodular    inequalities              https://oeis.org/A001788
@@ -147,9 +170,9 @@ function polymatroidcone{T}(::Type{T}, n::Integer, minimal = true)
   @assert cur_nonnegative == n_nonnegative+1
   @assert cur_nondecreasing == n_nondecreasing+1
   @assert cur_submodular == n_submodular+1
-  EntropyCone(n, A)
+  EntropyCone(n, A, IntSet(), lib)
 end
-polymatroidcone(n::Integer, minimal = true) = polymatroidcone(Int, n, true)
+polymatroidcone(n::Integer, lib = nothing, minimal = true) = polymatroidcone(Int, n, lib, minimal)
 
 function tight!(h::EntropyCone)
   # FIXME it doesn't work if I do not specify the type

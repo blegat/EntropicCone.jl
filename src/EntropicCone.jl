@@ -17,6 +17,7 @@ include("conelift.jl")
 include("coneoperations.jl")
 include("conelp.jl")
 include("lphierarchy.jl")
+include("doughertylists.jl")
 include("visualize.jl")
 
 end # module
