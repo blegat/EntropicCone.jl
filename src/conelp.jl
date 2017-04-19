@@ -6,7 +6,7 @@ function MathProgBase.linprog(c::DualEntropy, h::EntropyCone, cut::DualEntropy)
   MathProgBase.linprog(c.h, intersect(h.poly, cuthrep))
 end
 
-function getNLDS(c::DualEntropy, W, h, T, linset, solver, newcut::Symbol, cutman::AbstractCutManager)
+function getNLDS(c::DualEntropy, W, h, T, linset, solver, newcut::Symbol, cutman::AbstractCutPruningAlgo)
   K = [(:NonNeg, collect(setdiff(IntSet(1:size(W, 1)), linset))), (:Zero, collect(linset))]
   C = [(:NonNeg, collect(1:size(W, 2)))]
   #newcut = :InvalidateSolver
@@ -14,7 +14,7 @@ function getNLDS(c::DualEntropy, W, h, T, linset, solver, newcut::Symbol, cutman
   NLDS{Float64}(W, h, T, K, C, c.h, solver, cutman, newcut)
 end
 
-function extractNLDS(c, h::EntropyConeLift, id, idp, solver, newcut, cutman::AbstractCutManager)
+function extractNLDS(c, h::EntropyConeLift, id, idp, solver, newcut, cutman::AbstractCutPruningAlgo)
   hrep = SimpleHRepresentation(getinequalities(h.poly))
   idx  = rangefor(h, id)
   idxp = rangefor(h, idp)

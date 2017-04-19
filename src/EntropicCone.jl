@@ -3,7 +3,7 @@ module EntropicCone
 using MathProgBase
 using Polyhedra
 #using CDDLib
-using StochasticDualDynamicProgramming
+using StochasticDualDynamicProgramming, CutPruners
 
 import Base.setindex!, Base.*, Base.show, Base.getindex, Base.setdiff, Base.union, Base.issubset, Base.promote_rule, Base.in, Base.-, Base.push!, Base.copy, Base.intersect!, Base.intersect
 import Polyhedra.getinequalities
