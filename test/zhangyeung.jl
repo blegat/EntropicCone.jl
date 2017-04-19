@@ -32,6 +32,6 @@ zhangyeungineq = 3(nonnegative(n,union(I,K)) + nonnegative(n,union(I,L)) + nonne
 @test dot(zhangyeungineq, invalidf) == -1
 # Actually, invalidf is even the certificate returned by CDD
 # to show that the Zhang-Yeung inequality is new
-certificate = redundant(zhangyeungineq, G)[2]
-certificate *= 2 / certificate[1]
-@test PrimalEntropy{15,Int}(Array{Int}(certificate)) == invalidf
+#certificate = redundant(zhangyeungineq, G)[2]
+#certificate *= 2 / certificate[1]
+#@test PrimalEntropy{15,Int}(Array{Int}(certificate)) == invalidf

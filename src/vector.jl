@@ -93,6 +93,7 @@ end
 
 DualEntropy{T<:Real}(h::AbstractArray{T, 1}, equality::Bool=false, liftid::Int=1) = DualEntropy{length(h), T}(h, equality, liftid)
 
+hrepelem{N, T}(h::AbstractDualEntropy{N, T}) = h.equality ? HyperPlane{N, T}(-h.h, zero(T)) : HalfSpace(h.h, zero(T))
 function Base.convert{N, T<:Real}(::Type{SimpleHRepresentation{N,T}}, h::Vector{DualEntropy{N, T}})
   linset = IntSet([])
   m = length(h)

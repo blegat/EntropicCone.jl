@@ -8,7 +8,7 @@ function unlift{N}(h::EntropyConeLift{N})
 end
 
 function fullin{N}(h::AbstractPrimalEntropy{N}, H::AbstractEntropyCone{N})
-  isredundantgenerator(H.poly, h.h, false) # false because it is a ray and not a vertex
+    isvredundant(H.poly, h.h) #, false) # false because it is a ray and not a vertex
   #reducedim(&, (H.A*h.h) .>= 0, true)[1]
 end
 function partialin{NE, NC, S, T}(h::AbstractPrimalEntropy{NE, S}, H::AbstractEntropyCone{NC, T})
@@ -58,16 +58,16 @@ function Base.in(h::PrimalEntropy, H::EntropyConeLift)
 end
 
 function redundant{N, S, T}(h::AbstractDualEntropy{N, S}, H::AbstractEntropyCone{N, T})
-  (isin, certificate, vertex) = isredundantinequality(H.poly, -h.h, zero(T), h.equality)
-  (isin, certificate, vertex)
+    # CDDLib does not implement unbounded ray
+    ishredundant(H.poly, hrepelem(h)) #, cert = true)
 end
 
 function Base.in{N}(h::DualEntropy{N}, H::EntropyCone{N})
-  redundant(h, H)[1]
+    redundant(h, H) #[1]
 end
 
 function Base.in{N}(h::DualEntropyLift{N}, H::EntropyConeLift{N})
-  redundant(h, H)[1]
+    redundant(h, H) #[1]
 end
 
 function Base.in(h::DualEntropy, H::EntropyConeLift)
