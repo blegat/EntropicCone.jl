@@ -4,12 +4,12 @@ export getextremerays, fullin
 
 function unlift{N}(h::EntropyConeLift{N})
   poly = getpoly(h)
-  EntropyCone(eliminate(poly, IntSet([(ntodim(h.n[1])+1):N])))
+  EntropyCone(eliminate(poly, [(ntodim(h.n[1])+1):N]))
 end
 
 function fullin{N}(h::AbstractPrimalEntropy{N}, H::AbstractEntropyCone{N})
-  isredundantgenerator(H.poly, h.h, false) # false because it is a ray and not a vertex
-  #reducedim(&, (H.A*h.h) .>= 0, true)[1]
+    Ray(h.h) in H.poly
+    #reducedim(&, (H.A*h.h) .>= 0, true)[1]
 end
 function partialin{NE, NC, S, T}(h::AbstractPrimalEntropy{NE, S}, H::AbstractEntropyCone{NC, T})
   A = zeros(T, sum(ntodim(h.n)), NC)
@@ -58,17 +58,13 @@ function Base.in(h::PrimalEntropy, H::EntropyConeLift)
 end
 
 function redundant{N, S, T}(h::AbstractDualEntropy{N, S}, H::AbstractEntropyCone{N, T})
-  (isin, certificate, vertex) = isredundantinequality(H.poly, -h.h, zero(T), h.equality)
+  (isin, certificate, vertex) = ishredundant(H.poly, -h.h, zero(T), h.equality)
   (isin, certificate, vertex)
 end
 
-function Base.in{N}(h::DualEntropy{N}, H::EntropyCone{N})
-  redundant(h, H)[1]
-end
+Base.in{N}(h::DualEntropy{N}, H::EntropyCone{N}) = HRepElement(h) in H.poly
 
-function Base.in{N}(h::DualEntropyLift{N}, H::EntropyConeLift{N})
-  redundant(h, H)[1]
-end
+Base.in{N}(h::DualEntropyLift{N}, H::EntropyConeLift{N}) = HRepElement(h) in H.poly
 
 function Base.in(h::DualEntropy, H::EntropyConeLift)
   Base.in(DualEntropyLift(h, length(H.n)), H)

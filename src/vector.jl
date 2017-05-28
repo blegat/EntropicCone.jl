@@ -158,6 +158,8 @@ end
 
 DualEntropyLift{T<:Real}(n::Array{Int,1}, h::Array{T,1}, equality::Bool=false) = DualEntropyLift{length(h), T}(n, h, equality)
 
+HRepElement{N, T}(h::Union{DualEntropy{N, T}, DualEntropyLift{N, T}}) = h.equality ? HyperPlane(h.h, zero(T)) : HalfSpace(h.h, zero(T))
+
 abstract AbstractPrimalEntropy{N, T<:Real} <: EntropyVector{N, T}
 
 type PrimalEntropy{N, T<:Real} <: AbstractPrimalEntropy{N, T}

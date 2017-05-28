@@ -85,7 +85,7 @@ function equalvariable!{N, T}(h::EntropyConeLift{N, T}, id::Integer, i::Signed, 
   A = spzeros(T, nrows, N)
   offset = offsetfor(h, id)
   cur = 1
-  for S in indset(h.n, id)
+  for S in indset(h, id)
     if myin(i, S)
       A[cur, offset+S] = 1
       Q = union(setdiff(S, set(i)), set(j))

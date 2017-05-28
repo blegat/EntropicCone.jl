@@ -1,11 +1,11 @@
 import Polyhedra.fulldim
-export EntropyCone, polymatroidcone, redundant, getinequalities, getextremerays, tight!
+export EntropyCone, polymatroidcone, redundant, getinequalities, getextremerays, tight!, fulldim
 
 # Entropy Cone
 
 abstract AbstractEntropyCone{N, T<:Real}
 
-fulldim{N}(h::AbstractEntropyCone{N}) = N
+Polyhedra.fulldim{N}(h::AbstractEntropyCone{N}) = N
 
 type EntropyCone{N, T<:Real} <: AbstractEntropyCone{N, T}
   n::Int
@@ -64,7 +64,7 @@ end
 
 Base.copy{N, T<:Real}(h::EntropyCone{N, T}) = EntropyCone{N, T}(h.n, copy(h.poly))
 
-function fulldim(h::AbstractEntropyCone)
+function Polyhedra.fulldim(h::AbstractEntropyCone)
   fulldim(h.poly)
 end
 

@@ -15,7 +15,7 @@ function getNLDS(c::DualEntropy, W, h, T, linset, solver, newcut::Symbol, cutman
 end
 
 function extractNLDS(c, h::EntropyConeLift, id, idp, solver, newcut, cutman::AbstractCutPruningAlgo)
-  hrep = SimpleHRepresentation(getinequalities(h.poly))
+  hrep = SimpleHRepresentation(hrep(h.poly))
   idx  = rangefor(h, id)
   idxp = rangefor(h, idp)
 # Aabs = abs(hrep.A)
@@ -160,7 +160,7 @@ end
 
 function getRootNode(c::DualEntropy, H::EntropyCone, cut::DualEntropy, newnodes, solver, max_n::Integer, newcut::Symbol, cutman::Vector)
   cuthrep = SimpleHRepresentation(cut.h', [1])
-  hrep = SimpleHRepresentation(getinequalities(intersect(H.poly, cuthrep)))
+  hrep = SimpleHRepresentation(hrep(intersect(H.poly, cuthrep)))
   W = sparse(hrep.A) # FIXME I shouldn't have to do sparse
   h = sparsevec(hrep.b) # FIXME I shouldn't have to do sparse
   T = spzeros(Float64, length(h), 0)
