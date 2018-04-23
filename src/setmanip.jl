@@ -1,6 +1,6 @@
 export singleton, set, card, fullset
 
-typealias EntropyIndex UInt
+const EntropyIndex = UInt
 
 # Set Manipulation
 # function subsets(S)

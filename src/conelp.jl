@@ -2,7 +2,7 @@ import MathProgBase.linprog
 export getSDDPLattice, appendtoSDDPLattice!, updatemaxncuts!
 
 function MathProgBase.linprog(c::DualEntropy, h::EntropyCone, cut::DualEntropy)
-  cuthrep = SimpleHRepresentation(cut.h', [1])
+  cuthrep = HalfSpace(cut.h, 1)
   MathProgBase.linprog(c.h, intersect(h.poly, cuthrep))
 end
 
@@ -15,7 +15,7 @@ function getNLDS(c::DualEntropy, W, h, T, linset, solver, newcut::Symbol, cutman
 end
 
 function extractNLDS(c, h::EntropyConeLift, id, idp, solver, newcut, cutman::AbstractCutPruningAlgo)
-  hrep = SimpleHRepresentation(hrep(h.poly))
+  hrep = MixedMatHRep(hrep(h.poly))
   idx  = rangefor(h, id)
   idxp = rangefor(h, idp)
 # Aabs = abs(hrep.A)
@@ -159,8 +159,8 @@ function getSDDPNode(oldnodes, newnodes, np, Jp, Kp, adhp, parent, solver, max_n
 end
 
 function getRootNode(c::DualEntropy, H::EntropyCone, cut::DualEntropy, newnodes, solver, max_n::Integer, newcut::Symbol, cutman::Vector)
-  cuthrep = SimpleHRepresentation(cut.h', [1])
-  hrep = SimpleHRepresentation(hrep(intersect(H.poly, cuthrep)))
+  cuthrep = MixedMatHRep(cut.h', [1])
+  hrep = MixedMatHRep(hrep(intersect(H.poly, cuthrep)))
   W = sparse(hrep.A) # FIXME I shouldn't have to do sparse
   h = sparsevec(hrep.b) # FIXME I shouldn't have to do sparse
   T = spzeros(Float64, length(h), 0)

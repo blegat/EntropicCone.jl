@@ -1,5 +1,5 @@
-julia 0.5-
+julia 0.6
 MathProgBase
-Polyhedra
+Polyhedra 0.3
 StochasticDualDynamicProgramming
 CutPruners

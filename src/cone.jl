@@ -22,22 +22,6 @@ type EntropyCone{N, T<:Real} <: AbstractEntropyCone{N, T}
     new(dimton(N), p)
   end
 
-  function EntropyCone(n::Int, A::AbstractMatrix{T} = spzeros(T, 0, N), equalities::IntSet = IntSet(), lib=nothing)
-    if ntodim(n) != size(A, 2)
-      error("The dimension in n does not agree with the number of columns of A")
-    end
-    if !isempty(equalities) && last(equalities) > size(A, 1)
-      error("Equalities should range from 1 to the number of rows of A")
-    end
-    ine = SimpleHRepresentation(-A, spzeros(T, size(A, 1)), equalities)
-    if lib === nothing
-      p = polyhedron(ine)
-    else
-      p = polyhedron(ine, lib)
-    end
-    new(n, p)
-  end
-
 end
 
 function EntropyCone{T<:Real}(n::Int, A::AbstractMatrix{T} = spzeros(T, 0, N), equalities::IntSet = IntSet(), lib=nothing)
@@ -47,7 +31,7 @@ function EntropyCone{T<:Real}(n::Int, A::AbstractMatrix{T} = spzeros(T, 0, N), e
   if !isempty(equalities) && last(equalities) > size(A, 1)
     error("Equalities should range from 1 to the number of rows of A")
   end
-  ine = SimpleHRepresentation(-A, spzeros(T, size(A, 1)), equalities)
+  ine = MixedMatHRep(-A, spzeros(T, size(A, 1)), equalities)
   if lib === nothing
     p = polyhedron(ine)
   else
@@ -94,10 +78,10 @@ function push!{N, T, S}(H::AbstractEntropyCone{N, T}, h::AbstractDualEntropy{N, 
   if H.n != h.n
     error("The dimension of the cone and entropy differ")
   end
-  push!(H.poly, HRepresentation(h))
+  push!(H.poly, hrep(h))
 end
 function push!{N, T, S}(H::EntropyCone{N, T}, h::Vector{DualEntropy{N, S}})
-  push!(H.poly, HRepresentation(h))
+  push!(H.poly, hrep(h))
 end
 
 function Base.intersect!{N}(h::AbstractEntropyCone{N}, ine::HRepresentation{N})
@@ -120,7 +104,7 @@ function Base.intersect(h1::AbstractEntropyCone, h2::AbstractEntropyCone)
   typeof(h1)(h1.n, intersect(h1.poly, h2.poly))
 end
 
-function polymatroidcone{T}(::Type{T}, n::Integer, lib = nothing, minimal = true)
+function polymatroidcone(::Type{T}, n::Integer, lib = nothing, minimal = true) where T
   # 2^n-1           nonnegative   inequalities H(S) >= 0
   # n*2^(n-1)-n     nondecreasing inequalities H(S) >= H(T) https://oeis.org/A058877
   # n*(n+1)*2^(n-2) submodular    inequalities              https://oeis.org/A001788
@@ -140,27 +124,28 @@ function polymatroidcone{T}(::Type{T}, n::Integer, lib = nothing, minimal = true
   cur_nonnegative   = 1
   cur_nondecreasing = 1
   cur_submodular    = 1
-  A = spzeros(T, n_nonnegative + n_nondecreasing + n_submodular, ntodim(n))
+  HT = HalfSpace{Int64(ntodim(n)), T, SparseVector{T, Int}}
+  hss = Vector{HT}(n_nonnegative + n_nondecreasing + n_submodular)
   for j = 1:n
     for k = (j+1):n
-      A[offset_submodular+cur_submodular, :] = submodular(n, set(j), set(k))
+      hss[offset_submodular+cur_submodular] = submodular(n, set(j), set(k))
       cur_submodular += 1
     end
   end
   for I = indset(n)
     if !minimal
-      A[offset_nonnegative+cur_nonnegative, :] = nonnegative(n, I)
+      hss[offset_nonnegative+cur_nonnegative, :] = nonnegative(n, I)
       cur_nonnegative += 1
     end
     for j = 1:n
       if !myin(j, I)
         if !minimal || card(I) == n-1
-          A[offset_nondecreasing+cur_nondecreasing, :] = nondecreasing(n, I, set(j))
+          hss[offset_nondecreasing+cur_nondecreasing, :] = nondecreasing(n, I, set(j))
           cur_nondecreasing += 1
         end
         for k = (j+1):n
           if !myin(k, I)
-            A[offset_submodular+cur_submodular, :] = submodular(n, set(j), set(k), I)
+            hss[offset_submodular+cur_submodular, :] = submodular(n, set(j), set(k), I)
             cur_submodular += 1
           end
         end
@@ -170,7 +155,13 @@ function polymatroidcone{T}(::Type{T}, n::Integer, lib = nothing, minimal = true
   @assert cur_nonnegative == n_nonnegative+1
   @assert cur_nondecreasing == n_nondecreasing+1
   @assert cur_submodular == n_submodular+1
-  EntropyCone(n, A, IntSet(), lib)
+  h = hrep(hss)
+  if lib === nothing
+      p = polyhedron(h)
+  else
+      p = polyhedron(h, lib)
+  end
+  EntropyCone(n, p)
 end
 polymatroidcone(n::Integer, lib = nothing, minimal = true) = polymatroidcone(Int, n, lib, minimal)
 

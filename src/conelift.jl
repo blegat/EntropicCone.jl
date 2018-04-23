@@ -15,7 +15,7 @@ type EntropyConeLift{N, T<:Real} <: AbstractEntropyCone{N, T}
     if !isempty(equalities) && last(equalities) > size(A, 1)
       error("Equalities should range from 1 to the number of rows of A")
     end
-    ine = SimpleHRepresentation(A, spzeros(T, size(A, 1)), equalities)
+    ine = MixedMatHRep(A, spzeros(T, size(A, 1)), equalities)
     new(n, polyhedron(ine))
   end
 
@@ -68,7 +68,7 @@ function equalonsubsetsof!{N, T}(H::EntropyConeLift{N, T}, id1, id2, S::EntropyI
       cur += 1
     end
   end
-  ine = SimpleHRepresentation(A, spzeros(T, nrows), IntSet(1:nrows))
+  ine = MixedMatHRep(A, spzeros(T, nrows), IntSet(1:nrows))
   intersect!(H, ine)
 end
 equalonsubsetsof!(H::EntropyConeLift, id1, id2, s::Signed) = equalonsubsetsof!(H, id1, id2, set(s))
@@ -93,7 +93,7 @@ function equalvariable!{N, T}(h::EntropyConeLift{N, T}, id::Integer, i::Signed, 
       cur += 1
     end
   end
-  intersect!(h, SimpleHRepresentation(A, spzeros(T, nrows), IntSet(1:nrows)))
+  intersect!(h, MixedMatHRep(A, spzeros(T, nrows), IntSet(1:nrows)))
 end
 
 ninneradh(n, J::EntropyIndex, K::EntropyIndex) = n

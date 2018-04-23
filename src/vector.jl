@@ -62,9 +62,9 @@ Base.setindex!{N, T}(h::EntropyVector{N, T}, v::T, i::Int) = h.h[i] = v
 
 abstract AbstractDualEntropy{N, T<:Real} <: EntropyVector{N, T}
 
-type DualEntropy{N, T<:Real} <: AbstractDualEntropy{N, T}
+type DualEntropy{N, T<:Real, AT<:AbstractVector{T}} <: AbstractDualEntropy{N, T}
   n::Int
-  h::AbstractVector{T}
+  h::AT
   equality::Bool
   liftid::Int
 
@@ -93,29 +93,19 @@ end
 
 DualEntropy{T<:Real}(h::AbstractArray{T, 1}, equality::Bool=false, liftid::Int=1) = DualEntropy{length(h), T}(h, equality, liftid)
 
-function Base.convert{N, T<:Real}(::Type{SimpleHRepresentation{N,T}}, h::Vector{DualEntropy{N, T}})
-  linset = IntSet([])
-  m = length(h)
-  A = spzeros(T, m, N)
-  for i in 1:m
-    A[i,:] = -h[i].h
-    if h[i].equality
-      push!(linset, i)
+function Polyhedra.hrep(hs::Vector{DualEntropy{N, T, AT}}) where {N, T, AT}
+    hss = HalfSpace{N, T, AT}[]
+    hps = HyperPlane{N, T, AT}[]
+    for h in hs
+        if h[i].equality
+            push!(hps, HyperPlane(-h.h, zero(T)))
+        else
+            push!(hss, HalfSpace(h.h, zero(T)))
+        end
     end
-  end
-  SimpleHRepresentation(A, spzeros(T, m), linset)
+    hrep(hps, hss)
 end
-function Base.convert{N, T<:Real}(::Type{SimpleHRepresentation{N,T}}, h::DualEntropy{N, T})
-  linset = IntSet()
-  if h.equality
-    push!(linset, 1)
-  end
-  SimpleHRepresentation(-sparse(h.h'), spzeros(T, 1), linset)
-end
-
-import Polyhedra.HRepresentation
-HRepresentation{N,T}(h::Vector{DualEntropy{N,T}}) = SimpleHRepresentation{N,T}(h)
-HRepresentation{N,T}(h::DualEntropy{N,T}) = SimpleHRepresentation{N,T}(h)
+Polyhedra.hrep(hs::DualEntropy) = hrep([hs])
 
 function setequality(h::DualEntropy, eq::Bool)
   h.equality = eq
