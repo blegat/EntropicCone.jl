@@ -32,7 +32,7 @@ function indset(h::EntropyVector, id::Int)
 end
 
 #Store vectors as tuple to reuse their `isless'
-function isless(h::EntropyVector{N}, g::EntropyVector{N}) where N
+function Base.isless(h::EntropyVector{N}, g::EntropyVector{N}) where N
     for i in 1:length(h.h)
         if h.h[i] < g.h[i]
             return true
@@ -44,7 +44,7 @@ function isless(h::EntropyVector{N}, g::EntropyVector{N}) where N
 end
 
 Base.size(h::EntropyVector{N}) where {N} = (N,)
-Base.linearindexing(::Type{EntropyVector}) = Base.LinearFast()
+Base.IndexStyle(::Type{EntropyVector}) = Base.LinearFast()
 #Base.getindex(h::EntropyVector, i::Int) = h.h[i]
 #Base.getindex{T}(h::EntropyVector, i::AbstractArray{T,1}) = EntropyVector(h.h[i])
 Base.getindex(h::EntropyVector, i) = h.h[i]
@@ -68,36 +68,31 @@ mutable struct DualEntropy{N, T<:Real, AT<:AbstractVector{T}} <: AbstractDualEnt
     equality::Bool
     liftid::Int
 
-    function DualEntropy{N, T}(n::Int, equality::Bool=false, liftid::Int=1) where {N, T}
+    function DualEntropy{N, T}(n::Int, h::AbstractVector{T}, equality::Bool=false, liftid::Int=1) where {N, T}
+        if N != length(h)
+            error("Dimension N should be equal to the length of h")
+        end
         if ntodim(n) != N
             error("Number of variables and dimension does not match")
         end
         if liftid < 1
             error("liftid must be positive")
         end
-        new{N, T, Vector{T}}(n, Vector{T}(N), equality, liftid)
-    end
-
-    function DualEntropy{N, T}(h::AbstractVector{T}, equality::Bool=false, liftid::Int=1) where {N, T}
-        if N != length(h)
-            error("Dimension N should be equal to the length of h")
-        end
-        n = Int(round(log2(N + 1)))
-        if ntodim(n) != N
-            error("Illegal size of entropic constraint")
-        end
         new{N, T, typeof(h)}(n, h, equality, liftid)
     end
 
 end
 
-DualEntropy(h::AbstractArray{T, 1}, equality::Bool=false, liftid::Int=1) where {T<:Real} = DualEntropy{length(h), T}(h, equality, liftid)
+DualEntropy{N, T}(n::Int, equality::Bool=false, liftid::Int=1) where {N, T} = DualEntropy{N, T}(n, Vector{T}(N), equality, liftid)
+DualEntropy{N}(n::Int, h::AbstractVector{T}, equality::Bool=false, liftid::Int=1) where {N, T} = DualEntropy{N, T}(n, h, equality, liftid)
+DualEntropy{N}(h::AbstractVector, equality::Bool=false, liftid::Int=1) where N = DualEntropy{N}(dimton(N), h, equality, liftid)
+DualEntropy(h::AbstractVector{T}, equality::Bool=false, liftid::Int=1) where T = DualEntropy{length(h)}(h, equality, liftid)
 
-function Polyhedra.HyperPlane(h::DualEntropy{N}) where {N, T, AT}
+function Base.convert(::Type{HyperPlane{N, T, AT}}, h::DualEntropy{N}) where {N, T, AT}
     @assert h.equality
     HyperPlane{N, T, AT}(h.h, zero(T))
 end
-function Polyhedra.HalfSpace(h::DualEntropy{N}) where {N, T, AT}
+function Base.convert(::Type{HalfSpace{N, T, AT}}, h::DualEntropy{N}) where {N, T, AT}
     @assert !h.equality
     HalfSpace{N, T, AT}(-h.h, zero(T))
 end
@@ -129,21 +124,21 @@ mutable struct DualEntropyLift{N, T<:Real} <: AbstractDualEntropy{N, T}
     h::AbstractVector{T}
     equality::Bool
 
-    function DualEntropyLift(n::Vector{Int}, h::AbstractVector{T}=spzeros(T, N), equality::Bool=false)
+    function DualEntropyLift{N, T}(n::Vector{Int}, h::AbstractVector{T}=spzeros(T, N), equality::Bool=false) where {N, T}
         if sum(ntodim(n)) != N
             error("Number of variables and dimension does not match")
         end
         if N != length(h)
             error("Dimension N should be equal to the length of h")
         end
-        new(n, h, equality)
+        new{N, T}(n, h, equality)
     end
 
-    function DualEntropyLift(n::Vector{Int}, equality::Bool)
+    function DualEntropyLift{N, T}(n::Vector{Int}, equality::Bool) where {N, T}
         if sum(ntodim(n)) != N
             error("Number of variables and dimension does not match")
         end
-        new(n, spzeros(T, N), equality)
+        new{N, T}(n, spzeros(T, N), equality)
     end
 
 end
@@ -163,50 +158,44 @@ abstract type AbstractPrimalEntropy{N, T<:Real} <: EntropyVector{N, T} end
 
 mutable struct PrimalEntropy{N, T<:Real} <: AbstractPrimalEntropy{N, T}
     n::Int
-    h::AbstractArray{T, 1}
+    h::AbstractVector{T}
     liftid::Int # 1 by default: the first cone of the lift
 
-    function PrimalEntropy(n::Int, liftid::Int=1)
-        if ntodim(n) != N
-            error("Number of variables and dimension does not match")
-        end
-        new(n, Array{T, 1}(N), liftid)
-    end
-
-    function PrimalEntropy(h::AbstractArray{T, 1}, liftid::Int=1)
+    function PrimalEntropy{N, T}(n::Int, h::AbstractVector{T}, liftid::Int=1) where {N, T}
         if N != length(h)
             error("Dimension N should be equal to the length of h")
         end
-        n = Int(round(log2(N + 1)))
         if ntodim(n) != N
-            error("Illegal size of entropic constraint")
+            error("Number of variables and dimension does not match")
         end
-        new(n, h, liftid)
+        new{N, T}(n, h, liftid)
     end
-
 end
 
-PrimalEntropy(h::AbstractArray{T, 1}, liftid::Int=1) where {T<:Real} = PrimalEntropy{length(h), T}(h, liftid)
+PrimalEntropy{N, T}(n::Int, liftid::Int=1) where {N, T} = PrimalEntropy{N, T}(n, Vector{T}(N), liftid)
+PrimalEntropy{N}(n::Int, h::AbstractVector{T}, liftid::Int=1) where {N, T} = PrimalEntropy{N, T}(n, h, liftid)
+PrimalEntropy{N}(h::AbstractVector, liftid::Int=1) where N = PrimalEntropy{N}(dimton(N), h, liftid)
+PrimalEntropy(h::AbstractVector, liftid::Int=1) = PrimalEntropy{length(h)}(h, liftid)
 
 mutable struct PrimalEntropyLift{N, T<:Real} <: AbstractPrimalEntropy{N, T}
     n::Array{Int,1}
-    h::AbstractArray{T, 1}
+    h::AbstractVector{T}
     liftid::Array{Int,1}
 
     #function PrimalEntropyLift(n::Array{Int,1}, liftid::Array{Int,1})
     #  new(n, sum(ntodim(n)), liftid)
     #end
 
-    function PrimalEntropyLift(n::Array{Int,1}, h::AbstractArray{T, 1}, liftid::Array{Int,1})
+    function PrimalEntropyLift{N, T}(n::Array{Int,1}, h::AbstractVector{T}, liftid::Array{Int,1}) where {N, T}
         if sum(ntodim(n)) != N
             error("Number of variables and dimension does not match")
         end
-        new(n, h, liftid)
+        new{N, T}(n, h, liftid)
     end
 
 end
 
-PrimalEntropyLift(n::Array{Int,1}, h::AbstractArray{T, 1}, liftid::Array{Int,1}) where {T<:Real} = PrimalEntropyLift{Int(sum(ntodim(n))), T}(n, h, liftid)
+PrimalEntropyLift(n::Array{Int,1}, h::AbstractVector{T}, liftid::Array{Int,1}) where {T<:Real} = PrimalEntropyLift{Int(sum(ntodim(n))), T}(n, h, liftid)
 
 function (*)(h1::AbstractPrimalEntropy{N1, T}, h2::AbstractPrimalEntropy{N2, T}) where {N1, N2, T<:Real}
     if length(h1.liftid) + length(h2.liftid) != length(union(IntSet(h1.liftid), IntSet(h2.liftid)))
@@ -253,12 +242,17 @@ function constdualentropy(n, x::T) where T<:Real
     end
 end
 
-function one(h::PrimalEntropy{N,T}) where {N,T<:Real}
+function Base.one(h::PrimalEntropy{N,T}) where {N,T<:Real}
     constprimalentropy(h.n, one(T))
 end
-function one(h::DualEntropy{N,T}) where {N,T<:Real}
+function Base.one(h::DualEntropy{N,T}) where {N,T<:Real}
     constdualentropy(h.n, one(T))
 end
+
+Base.:(*)(h::DualEntropy{N}, α::Number) where N = DualEntropy{N}(h.n, h.h*α, h.equality, h.liftid)
+Base.:(*)(α::Number, h::DualEntropy{N}) where N = DualEntropy{N}(h.n, h.h*α, h.equality, h.liftid)
+Base.:(*)(h::PrimalEntropy{N}, α::Number) where N = PrimalEntropy{N}(h.n, h.h*α, h.liftid)
+Base.:(*)(α::Number, h::PrimalEntropy{N}) where N = PrimalEntropy{N}(h.n, h.h*α, h.liftid)
 
 #Base.similar(h::EntropyVector) = EntropyVector(h.n)
 # Used by e.g. hcat
@@ -307,7 +301,8 @@ function submodular(n, S::EntropyIndex, T::EntropyIndex, I::EntropyIndex)
     S = union(S, I)
     T = union(T, I)
     U = union(S, T)
-    dualentropywith(n, [S, T], [U, I])
+    h = dualentropywith(n, [S, T], [U, I])
+    h
 end
 submodular(n, S::EntropyIndex, T::EntropyIndex) = submodular(n, S, T, S ∩ T)
 submodular(n, s::Signed, t::Signed, i::Signed) = submodular(n, set(s), set(t), set(i))
@@ -366,14 +361,14 @@ function cardentropy(n)
 end
 
 #min(h1, h2) gives Array{Any,1} instead of EntropyVector :(
-function mymin(h1::PrimalEntropy{N, T}, h2::PrimalEntropy{N, T}) where {N, T<:Real} # FIXME cannot make it work with min :(
-    PrimalEntropy{N, T}(min(h1.h, h2.h))
+function _min(h1::PrimalEntropy{N, T}, h2::PrimalEntropy{N, T}) where {N, T<:Real} # FIXME cannot make it work with min :(
+    PrimalEntropy{N}(min.(h1.h, h2.h))
 end
 
 function invalidfentropy(S::EntropyIndex)
     n = 4
     #ret = min(constentropy(n, 4), 2 * cardentropy(n)) #can't make it work
-    h = mymin(constprimalentropy(n, 4), cardentropy(n) * 2)
+    h = _min(constprimalentropy(n, 4), cardentropy(n) * 2)
     for i in indset(n)
         if i != S && card(i) == 2
             h[i] = 3
@@ -388,7 +383,7 @@ end
 
 function matusrentropy(t, S::EntropyIndex)
     n = 4
-    h = mymin(constprimalentropy(n, t), cardminusentropy(n, S))
+    h = _min(constprimalentropy(n, t), cardminusentropy(n, S))
     return h
 end
 

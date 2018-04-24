@@ -4,11 +4,11 @@ mutable struct EntropyConeLift{N, T<:Real} <: AbstractEntropyCone{N, T}
     n::Vector{Int}
     poly::Polyhedron{N, T}
 
-    function EntropyConeLift(n::Vector{Int}, poly::Polyhedron{N, T})
-        new(n, poly)
+    function EntropyConeLift{N, T}(n::Vector{Int}, poly::Polyhedron{N, T}) where {N, T}
+        new{N, T}(n, poly)
     end
 
-    function EntropyConeLift(n::Vector{Int}, A::AbstractMatrix{T}, equalities::IntSet)
+    function EntropyConeLift{N, T}(n::Vector{Int}, A::AbstractMatrix{T}, equalities::IntSet) where {N, T}
         if sum(ntodim(n)) != size(A, 2)
             error("The dimensions in n does not agree with the number of columns of A")
         end
@@ -16,7 +16,7 @@ mutable struct EntropyConeLift{N, T<:Real} <: AbstractEntropyCone{N, T}
             error("Equalities should range from 1 to the number of rows of A")
         end
         ine = MixedMatHRep(A, spzeros(T, size(A, 1)), equalities)
-        new(n, polyhedron(ine))
+        new{N, T}(n, polyhedron(ine))
     end
 
 end

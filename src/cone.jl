@@ -5,41 +5,21 @@ export EntropyCone, polymatroidcone, redundant, getinequalities, getextremerays,
 
 abstract type AbstractEntropyCone{N, T<:Real} end
 
-Polyhedra.fulldim(h::AbstractEntropyCone{N}) where {N} = N
+Polyhedra.fulldim(h::AbstractEntropyCone{N}) where N = N
 
 mutable struct EntropyCone{N, T<:Real} <: AbstractEntropyCone{N, T}
     n::Int
     poly::Polyhedron{N, T}
 
-    function EntropyCone(n::Int, p::Polyhedron{N, T})
+    function EntropyCone{N, T}(n::Int, p::Polyhedron{N, T}) where {N, T}
         if ntodim(n) != N
             error("The number of variables does not match the dimension of the polyhedron")
         end
-        new(n, p)
+        new{N, T}(n, p)
     end
-
-    function EntropyCone(p::Polyhedron{N, T})
-        new(dimton(N), p)
-    end
-
 end
-
-function EntropyCone(n::Int, A::AbstractMatrix{T} = spzeros(T, 0, N), equalities::IntSet = IntSet(), lib=nothing) where T<:Real
-    if ntodim(n) != size(A, 2)
-        error("The dimension in n does not agree with the number of columns of A")
-    end
-    if !isempty(equalities) && last(equalities) > size(A, 1)
-        error("Equalities should range from 1 to the number of rows of A")
-    end
-    ine = MixedMatHRep(-A, spzeros(T, size(A, 1)), equalities)
-    if lib === nothing
-        p = polyhedron(ine)
-    else
-        p = polyhedron(ine, lib)
-    end
-    EntropyCone{fulldim(p), eltype(p)}(n, p)
-end
-
+EntropyCone{N, T}(p::Polyhedron{N, T}) where {N, T} = EntropyCone{N, T}(dimton(N), p)
+EntropyCone(n::Int, p::Polyhedron{N, T}) where {N, T} = EntropyCone{N, T}(n, p)
 
 #EntropyCone{T<:AbstractFloat}(n::Int, A::AbstractMatrix{T}) = EntropyCone{size(A, 2), Float64}(n, AbstractMatrix{Float64}(A), IntSet([]))
 #EntropyCone{T<:Real}(n::Int, A::AbstractMatrix{T}) = EntropyCone{size(A, 2), Rational{BigInt}}(n, AbstractMatrix{Rational{BigInt}}(A), IntSet())
@@ -47,10 +27,6 @@ end
 #Base.getindex{T<:Real}(H::EntropyCone{T}, i) = DualEntropy(H.n, H.A[i,:], i in H.equalities) # FIXME
 
 Base.copy(h::EntropyCone{N, T}) where {N, T<:Real} = EntropyCone{N, T}(h.n, copy(h.poly))
-
-function Polyhedra.fulldim(h::AbstractEntropyCone)
-    fulldim(h.poly)
-end
 
 function indset(h::EntropyCone)
     indset(h.n)
@@ -134,18 +110,18 @@ function polymatroidcone(::Type{T}, n::Integer, lib = nothing, minimal = true) w
     end
     for I = indset(n)
         if !minimal
-            hss[offset_nonnegative+cur_nonnegative, :] = nonnegative(n, I)
+            hss[offset_nonnegative+cur_nonnegative] = nonnegative(n, I)
             cur_nonnegative += 1
         end
         for j = 1:n
             if !myin(j, I)
                 if !minimal || card(I) == n-1
-                    hss[offset_nondecreasing+cur_nondecreasing, :] = nondecreasing(n, I, set(j))
+                    hss[offset_nondecreasing+cur_nondecreasing] = nondecreasing(n, I, set(j))
                     cur_nondecreasing += 1
                 end
                 for k = (j+1):n
                     if !myin(k, I)
-                        hss[offset_submodular+cur_submodular, :] = submodular(n, set(j), set(k), I)
+                        hss[offset_submodular+cur_submodular] = submodular(n, set(j), set(k), I)
                         cur_submodular += 1
                     end
                 end
