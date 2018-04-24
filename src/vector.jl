@@ -25,7 +25,7 @@ function dimton(N)
     n
 end
 
-abstract EntropyVector{N, T<:Real} <: AbstractArray{T, 1}
+abstract type EntropyVector{N, T<:Real} <: AbstractVector{T} end
 
 function indset(h::EntropyVector, id::Int)
     indset(h.n[id])
@@ -60,7 +60,7 @@ Base.setindex!{N, T}(h::EntropyVector{N, T}, v::T, i::Int) = h.h[i] = v
 #  end
 #end
 
-abstract AbstractDualEntropy{N, T<:Real} <: EntropyVector{N, T}
+abstract type AbstractDualEntropy{N, T<:Real} <: EntropyVector{N, T} end
 
 type DualEntropy{N, T<:Real, AT<:AbstractVector{T}} <: AbstractDualEntropy{N, T}
     n::Int
@@ -68,17 +68,17 @@ type DualEntropy{N, T<:Real, AT<:AbstractVector{T}} <: AbstractDualEntropy{N, T}
     equality::Bool
     liftid::Int
 
-    function DualEntropy(n::Int, equality::Bool=false, liftid::Int=1)
+    function DualEntropy{N, T}(n::Int, equality::Bool=false, liftid::Int=1) where {N, T}
         if ntodim(n) != N
             error("Number of variables and dimension does not match")
         end
         if liftid < 1
             error("liftid must be positive")
         end
-        new(n, Array{T, 1}(N), equality, liftid)
+        new{N, T, Vector{T}}(n, Vector{T}(N), equality, liftid)
     end
 
-    function DualEntropy(h::AbstractVector{T}, equality::Bool=false, liftid::Int=1)
+    function DualEntropy{N, T}(h::AbstractVector{T}, equality::Bool=false, liftid::Int=1) where {N, T}
         if N != length(h)
             error("Dimension N should be equal to the length of h")
         end
@@ -86,21 +86,30 @@ type DualEntropy{N, T<:Real, AT<:AbstractVector{T}} <: AbstractDualEntropy{N, T}
         if ntodim(n) != N
             error("Illegal size of entropic constraint")
         end
-        new(n, h, equality, liftid)
+        new{N, T, typeof(h)}(n, h, equality, liftid)
     end
 
 end
 
 DualEntropy{T<:Real}(h::AbstractArray{T, 1}, equality::Bool=false, liftid::Int=1) = DualEntropy{length(h), T}(h, equality, liftid)
 
+function Polyhedra.HyperPlane{N, T, AT}(h::DualEntropy{N})
+    @assert h.equality
+    HyperPlane{N, T, AT}(h.h, zero(T))
+end
+function Polyhedra.HalfSpace{N, T, AT}(h::DualEntropy{N})
+    @assert !h.equality
+    HalfSpace{N, T, AT}(-h.h, zero(T))
+end
+
 function Polyhedra.hrep(hs::Vector{DualEntropy{N, T, AT}}) where {N, T, AT}
     hss = HalfSpace{N, T, AT}[]
     hps = HyperPlane{N, T, AT}[]
     for h in hs
         if h[i].equality
-            push!(hps, HyperPlane(-h.h, zero(T)))
+            push!(hps, HyperPlane{N, T, AT}(h))
         else
-            push!(hss, HalfSpace(h.h, zero(T)))
+            push!(hss, HalfSpace{N, T, AT}(h))
         end
     end
     hrep(hps, hss)
@@ -150,7 +159,7 @@ DualEntropyLift{T<:Real}(n::Array{Int,1}, h::Array{T,1}, equality::Bool=false) =
 
 HRepElement{N, T}(h::Union{DualEntropy{N, T}, DualEntropyLift{N, T}}) = h.equality ? HyperPlane(h.h, zero(T)) : HalfSpace(h.h, zero(T))
 
-abstract AbstractPrimalEntropy{N, T<:Real} <: EntropyVector{N, T}
+abstract type AbstractPrimalEntropy{N, T<:Real} <: EntropyVector{N, T} end
 
 type PrimalEntropy{N, T<:Real} <: AbstractPrimalEntropy{N, T}
     n::Int
