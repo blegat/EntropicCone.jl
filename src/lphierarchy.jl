@@ -1,4 +1,4 @@
-function enforceadhesivity{N, ET<:Real}(h::EntropyCone{N, ET})
+function enforceadhesivity(h::EntropyCone{N, ET}) where {N, ET<:Real}
     lift = h
     last = 1
     for S in indset(h)

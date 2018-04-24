@@ -58,7 +58,7 @@ function set(i::Integer)
     end
     ret
 end
-function set{S<:Integer}(I::AbstractArray{S})
+function set(I::AbstractArray{S}) where S<:Integer
     ret = emptyset()
     for i in I
         ret = union(ret, singleton(i))

@@ -3,11 +3,11 @@ export EntropyCone, polymatroidcone, redundant, getinequalities, getextremerays,
 
 # Entropy Cone
 
-abstract AbstractEntropyCone{N, T<:Real}
+abstract type AbstractEntropyCone{N, T<:Real} end
 
-Polyhedra.fulldim{N}(h::AbstractEntropyCone{N}) = N
+Polyhedra.fulldim(h::AbstractEntropyCone{N}) where {N} = N
 
-type EntropyCone{N, T<:Real} <: AbstractEntropyCone{N, T}
+mutable struct EntropyCone{N, T<:Real} <: AbstractEntropyCone{N, T}
     n::Int
     poly::Polyhedron{N, T}
 
@@ -24,7 +24,7 @@ type EntropyCone{N, T<:Real} <: AbstractEntropyCone{N, T}
 
 end
 
-function EntropyCone{T<:Real}(n::Int, A::AbstractMatrix{T} = spzeros(T, 0, N), equalities::IntSet = IntSet(), lib=nothing)
+function EntropyCone(n::Int, A::AbstractMatrix{T} = spzeros(T, 0, N), equalities::IntSet = IntSet(), lib=nothing) where T<:Real
     if ntodim(n) != size(A, 2)
         error("The dimension in n does not agree with the number of columns of A")
     end
@@ -46,7 +46,7 @@ end
 
 #Base.getindex{T<:Real}(H::EntropyCone{T}, i) = DualEntropy(H.n, H.A[i,:], i in H.equalities) # FIXME
 
-Base.copy{N, T<:Real}(h::EntropyCone{N, T}) = EntropyCone{N, T}(h.n, copy(h.poly))
+Base.copy(h::EntropyCone{N, T}) where {N, T<:Real} = EntropyCone{N, T}(h.n, copy(h.poly))
 
 function Polyhedra.fulldim(h::AbstractEntropyCone)
     fulldim(h.poly)
@@ -74,17 +74,17 @@ function getextremerays(h::EntropyCone)
     [PrimalEntropy(ext.R[i,:]) for i in 1:size(ext.R, 1)]
 end
 
-function push!{N, T, S}(H::AbstractEntropyCone{N, T}, h::AbstractDualEntropy{N, S})
+function push!(H::AbstractEntropyCone{N, T}, h::AbstractDualEntropy{N, S}) where {N, T, S}
     if H.n != h.n
         error("The dimension of the cone and entropy differ")
     end
     push!(H.poly, hrep(h))
 end
-function push!{N, T, S}(H::EntropyCone{N, T}, h::Vector{DualEntropy{N, S}})
+function push!(H::EntropyCone{N, T}, h::Vector{DualEntropy{N, S}}) where {N, T, S}
     push!(H.poly, hrep(h))
 end
 
-function Base.intersect!{N}(h::AbstractEntropyCone{N}, ine::HRepresentation{N})
+function Base.intersect!(h::AbstractEntropyCone{N}, ine::HRepresentation{N}) where N
     if N != size(ine.A, 2)
         error("The dimension for the cone and the HRepresentation differ")
     end

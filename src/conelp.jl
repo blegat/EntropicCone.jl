@@ -66,7 +66,7 @@ function next_perm(arr)
     end
 end
 
-function addchildren!{S}(node::SDDPNode{S}, n::Int, old::Bool, oldnodes, newnodes, solver, max_n::Int, newcut::Symbol, cutman::Vector)
+function addchildren!(node::SDDPNode{S}, n::Int, old::Bool, oldnodes, newnodes, solver, max_n::Int, newcut::Symbol, cutman::Vector) where S
     children = Vector{SDDPNode{S}}()
 
     function addchild(J::EntropyIndex,K::EntropyIndex,adh::Symbol,T=speye(Int(ntodim(n))))

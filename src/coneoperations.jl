@@ -2,16 +2,16 @@ import Polyhedra.polyhedron
 # Fullin also provides a certificate so it is interesting so it is exported
 export getextremerays, fullin
 
-function unlift{N}(h::EntropyConeLift{N})
+function unlift(h::EntropyConeLift{N}) where N
     poly = getpoly(h)
     EntropyCone(eliminate(poly, [(ntodim(h.n[1])+1):N]))
 end
 
-function fullin{N}(h::AbstractPrimalEntropy{N}, H::AbstractEntropyCone{N})
+function fullin(h::AbstractPrimalEntropy{N}, H::AbstractEntropyCone{N}) where N
     Ray(h.h) in H.poly
     #reducedim(&, (H.A*h.h) .>= 0, true)[1]
 end
-function partialin{NE, NC, S, T}(h::AbstractPrimalEntropy{NE, S}, H::AbstractEntropyCone{NC, T})
+function partialin(h::AbstractPrimalEntropy{NE, S}, H::AbstractEntropyCone{NC, T}) where {NE, NC, S, T}
     A = zeros(T, sum(ntodim(h.n)), NC)
     offseth = 0
     offsetsH = [0; cumsum(map(ntodim, H.n))]
@@ -27,7 +27,7 @@ function partialin{NE, NC, S, T}(h::AbstractPrimalEntropy{NE, S}, H::AbstractEnt
     !Base.isempty(Base.intersect(H.poly, ine))#CDD.HRepresentation([-H.A; A], [zeros(T, size(H.A,1)); h.h], linset))
 end
 
-function Base.in{NE, NC}(h::PrimalEntropy{NE}, H::EntropyCone{NC})
+function Base.in(h::PrimalEntropy{NE}, H::EntropyCone{NC}) where {NE, NC}
     if NE > NC
         error("The vector has a higher dimension than the cone")
     elseif NE == NC
@@ -57,14 +57,14 @@ function Base.in(h::PrimalEntropy, H::EntropyConeLift)
     end
 end
 
-function redundant{N, S, T}(h::AbstractDualEntropy{N, S}, H::AbstractEntropyCone{N, T})
+function redundant(h::AbstractDualEntropy{N, S}, H::AbstractEntropyCone{N, T}) where {N, S, T}
     (isin, certificate, vertex) = ishredundant(H.poly, -h.h, zero(T), h.equality)
     (isin, certificate, vertex)
 end
 
-Base.in{N}(h::DualEntropy{N}, H::EntropyCone{N}) = HRepElement(h) in H.poly
+Base.in(h::DualEntropy{N}, H::EntropyCone{N}) where {N} = HRepElement(h) in H.poly
 
-Base.in{N}(h::DualEntropyLift{N}, H::EntropyConeLift{N}) = HRepElement(h) in H.poly
+Base.in(h::DualEntropyLift{N}, H::EntropyConeLift{N}) where {N} = HRepElement(h) in H.poly
 
 function Base.in(h::DualEntropy, H::EntropyConeLift)
     Base.in(DualEntropyLift(h, length(H.n)), H)

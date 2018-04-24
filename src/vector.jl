@@ -32,7 +32,7 @@ function indset(h::EntropyVector, id::Int)
 end
 
 #Store vectors as tuple to reuse their `isless'
-function isless{N}(h::EntropyVector{N}, g::EntropyVector{N})
+function isless(h::EntropyVector{N}, g::EntropyVector{N}) where N
     for i in 1:length(h.h)
         if h.h[i] < g.h[i]
             return true
@@ -43,12 +43,12 @@ function isless{N}(h::EntropyVector{N}, g::EntropyVector{N})
     return false
 end
 
-Base.size{N}(h::EntropyVector{N}) = (N,)
+Base.size(h::EntropyVector{N}) where {N} = (N,)
 Base.linearindexing(::Type{EntropyVector}) = Base.LinearFast()
 #Base.getindex(h::EntropyVector, i::Int) = h.h[i]
 #Base.getindex{T}(h::EntropyVector, i::AbstractArray{T,1}) = EntropyVector(h.h[i])
 Base.getindex(h::EntropyVector, i) = h.h[i]
-Base.setindex!{N, T}(h::EntropyVector{N, T}, v::T, i::Int) = h.h[i] = v
+Base.setindex!(h::EntropyVector{N, T}, v::T, i::Int) where {N, T} = h.h[i] = v
 
 #function *(x, h::EntropyVector)
 #  EntropyVector(x * h.h)
@@ -62,7 +62,7 @@ Base.setindex!{N, T}(h::EntropyVector{N, T}, v::T, i::Int) = h.h[i] = v
 
 abstract type AbstractDualEntropy{N, T<:Real} <: EntropyVector{N, T} end
 
-type DualEntropy{N, T<:Real, AT<:AbstractVector{T}} <: AbstractDualEntropy{N, T}
+mutable struct DualEntropy{N, T<:Real, AT<:AbstractVector{T}} <: AbstractDualEntropy{N, T}
     n::Int
     h::AT
     equality::Bool
@@ -91,13 +91,13 @@ type DualEntropy{N, T<:Real, AT<:AbstractVector{T}} <: AbstractDualEntropy{N, T}
 
 end
 
-DualEntropy{T<:Real}(h::AbstractArray{T, 1}, equality::Bool=false, liftid::Int=1) = DualEntropy{length(h), T}(h, equality, liftid)
+DualEntropy(h::AbstractArray{T, 1}, equality::Bool=false, liftid::Int=1) where {T<:Real} = DualEntropy{length(h), T}(h, equality, liftid)
 
-function Polyhedra.HyperPlane{N, T, AT}(h::DualEntropy{N})
+function Polyhedra.HyperPlane(h::DualEntropy{N}) where {N, T, AT}
     @assert h.equality
     HyperPlane{N, T, AT}(h.h, zero(T))
 end
-function Polyhedra.HalfSpace{N, T, AT}(h::DualEntropy{N})
+function Polyhedra.HalfSpace(h::DualEntropy{N}) where {N, T, AT}
     @assert !h.equality
     HalfSpace{N, T, AT}(-h.h, zero(T))
 end
@@ -124,7 +124,7 @@ end
 #Base.convert{N, T}(::Type{HRepresentation{T}}, h::DualEntropy{N, T}) = Base.convert(HRepresentation{T}, [h])
 #Doesn't work
 
-type DualEntropyLift{N, T<:Real} <: AbstractDualEntropy{N, T}
+mutable struct DualEntropyLift{N, T<:Real} <: AbstractDualEntropy{N, T}
     n::Vector{Int}
     h::AbstractVector{T}
     equality::Bool
@@ -148,20 +148,20 @@ type DualEntropyLift{N, T<:Real} <: AbstractDualEntropy{N, T}
 
 end
 
-function DualEntropyLift{N, T}(h::DualEntropy{N, T}, m)
+function DualEntropyLift(h::DualEntropy{N, T}, m) where {N, T}
     hlift = spzeros(T, m*N)
     offset = (h.liftid-1)*N
     hlift[(offset+1):(offset+N)] = h.h
     DualEntropyLift{m*N, T}(h.n*ones(Int, m), hlift, h.equality)
 end
 
-DualEntropyLift{T<:Real}(n::Array{Int,1}, h::Array{T,1}, equality::Bool=false) = DualEntropyLift{length(h), T}(n, h, equality)
+DualEntropyLift(n::Array{Int,1}, h::Array{T,1}, equality::Bool=false) where {T<:Real} = DualEntropyLift{length(h), T}(n, h, equality)
 
-HRepElement{N, T}(h::Union{DualEntropy{N, T}, DualEntropyLift{N, T}}) = h.equality ? HyperPlane(h.h, zero(T)) : HalfSpace(h.h, zero(T))
+HRepElement(h::Union{DualEntropy{N, T}, DualEntropyLift{N, T}}) where {N, T} = h.equality ? HyperPlane(h.h, zero(T)) : HalfSpace(h.h, zero(T))
 
 abstract type AbstractPrimalEntropy{N, T<:Real} <: EntropyVector{N, T} end
 
-type PrimalEntropy{N, T<:Real} <: AbstractPrimalEntropy{N, T}
+mutable struct PrimalEntropy{N, T<:Real} <: AbstractPrimalEntropy{N, T}
     n::Int
     h::AbstractArray{T, 1}
     liftid::Int # 1 by default: the first cone of the lift
@@ -186,9 +186,9 @@ type PrimalEntropy{N, T<:Real} <: AbstractPrimalEntropy{N, T}
 
 end
 
-PrimalEntropy{T<:Real}(h::AbstractArray{T, 1}, liftid::Int=1) = PrimalEntropy{length(h), T}(h, liftid)
+PrimalEntropy(h::AbstractArray{T, 1}, liftid::Int=1) where {T<:Real} = PrimalEntropy{length(h), T}(h, liftid)
 
-type PrimalEntropyLift{N, T<:Real} <: AbstractPrimalEntropy{N, T}
+mutable struct PrimalEntropyLift{N, T<:Real} <: AbstractPrimalEntropy{N, T}
     n::Array{Int,1}
     h::AbstractArray{T, 1}
     liftid::Array{Int,1}
@@ -206,18 +206,18 @@ type PrimalEntropyLift{N, T<:Real} <: AbstractPrimalEntropy{N, T}
 
 end
 
-PrimalEntropyLift{T<:Real}(n::Array{Int,1}, h::AbstractArray{T, 1}, liftid::Array{Int,1}) = PrimalEntropyLift{Int(sum(ntodim(n))), T}(n, h, liftid)
+PrimalEntropyLift(n::Array{Int,1}, h::AbstractArray{T, 1}, liftid::Array{Int,1}) where {T<:Real} = PrimalEntropyLift{Int(sum(ntodim(n))), T}(n, h, liftid)
 
-function (*){N1, N2, T<:Real}(h1::AbstractPrimalEntropy{N1, T}, h2::AbstractPrimalEntropy{N2, T})
+function (*)(h1::AbstractPrimalEntropy{N1, T}, h2::AbstractPrimalEntropy{N2, T}) where {N1, N2, T<:Real}
     if length(h1.liftid) + length(h2.liftid) != length(union(IntSet(h1.liftid), IntSet(h2.liftid)))
         error("liftids must differ")
     end
     PrimalEntropyLift([h1.n; h2.n], [h1.h; h2.h], [h1.liftid; h2.liftid])
 end
 
-Base.convert{N, T<:Real,S<:Real}(::Type{PrimalEntropy{N, T}}, h::PrimalEntropy{N, S}) = PrimalEntropy(Array{T}(h.h))
+Base.convert(::Type{PrimalEntropy{N, T}}, h::PrimalEntropy{N, S}) where {N, T<:Real,S<:Real} = PrimalEntropy(Array{T}(h.h))
 
-function subpdf{n}(p::Array{Float64,n}, S::EntropyIndex)
+function subpdf(p::Array{Float64,n}, S::EntropyIndex) where n
     cpy = copy(p)
     for j = 1:n
         if !myin(j, S)
@@ -227,9 +227,9 @@ function subpdf{n}(p::Array{Float64,n}, S::EntropyIndex)
     cpy
 end
 
-subpdf{n}(p::Array{Float64,n}, s::Signed) = subpdf(p, set(s))
+subpdf(p::Array{Float64,n}, s::Signed) where {n} = subpdf(p, set(s))
 
-function entropyfrompdf{n}(p::Array{Float64,n})
+function entropyfrompdf(p::Array{Float64,n}) where n
     h = PrimalEntropy{Int(ntodim(n)), Float64}(n, 1)
     for i = indset(n)
         h[i] = -sum(map(xlogx, subpdf(p, i)))
@@ -237,15 +237,15 @@ function entropyfrompdf{n}(p::Array{Float64,n})
     h
 end
 
-(-){N, T<:Real}(h::PrimalEntropy{N, T})     = PrimalEntropy{N, T}(-h.h, h.liftid)
-(-){N, T<:Real}(h::DualEntropy{N, T})       =   DualEntropy{N, T}(-h.h, h.equality, h.liftid)
-(-){N, T<:Real}(h::PrimalEntropyLift{N, T}) = PrimalEntropyLift{N, T}(h.n, -h.h, h.liftid)
-(-){N, T<:Real}(h::DualEntropyLift{N, T})   =   DualEntropyLift{N, T}(h.n, -h.h, h.equality)
+(-)(h::PrimalEntropy{N, T}) where {N, T<:Real}     = PrimalEntropy{N, T}(-h.h, h.liftid)
+(-)(h::DualEntropy{N, T}) where {N, T<:Real}       =   DualEntropy{N, T}(-h.h, h.equality, h.liftid)
+(-)(h::PrimalEntropyLift{N, T}) where {N, T<:Real} = PrimalEntropyLift{N, T}(h.n, -h.h, h.liftid)
+(-)(h::DualEntropyLift{N, T}) where {N, T<:Real}   =   DualEntropyLift{N, T}(h.n, -h.h, h.equality)
 
-function constprimalentropy{T<:Real}(n, x::T)
+function constprimalentropy(n, x::T) where T<:Real
     PrimalEntropy(x * ones(T, ntodim(n)))
 end
-function constdualentropy{T<:Real}(n, x::T)
+function constdualentropy(n, x::T) where T<:Real
     if x == 0
         DualEntropy(spzeros(T, ntodim(n)))
     else
@@ -253,20 +253,20 @@ function constdualentropy{T<:Real}(n, x::T)
     end
 end
 
-function one{N,T<:Real}(h::PrimalEntropy{N,T})
+function one(h::PrimalEntropy{N,T}) where {N,T<:Real}
     constprimalentropy(h.n, one(T))
 end
-function one{N,T<:Real}(h::DualEntropy{N,T})
+function one(h::DualEntropy{N,T}) where {N,T<:Real}
     constdualentropy(h.n, one(T))
 end
 
 #Base.similar(h::EntropyVector) = EntropyVector(h.n)
 # Used by e.g. hcat
-Base.similar{T}(h::PrimalEntropy, ::Type{T}, dims::Dims) = length(dims) == 1 ? PrimalEntropy{dims[1], T}(dimton(dims[1]), h.liftid) : Array{T}(dims...)
-Base.similar{T}(h::DualEntropy, ::Type{T}, dims::Dims) = length(dims) == 1 ? DualEntropy{dims[1], T}(dimton(dims[1]), h.equality, h.liftid) : Array{T}(dims...)
+Base.similar(h::PrimalEntropy, ::Type{T}, dims::Dims) where {T} = length(dims) == 1 ? PrimalEntropy{dims[1], T}(dimton(dims[1]), h.liftid) : Array{T}(dims...)
+Base.similar(h::DualEntropy, ::Type{T}, dims::Dims) where {T} = length(dims) == 1 ? DualEntropy{dims[1], T}(dimton(dims[1]), h.equality, h.liftid) : Array{T}(dims...)
 # Cheating here, I cannot deduce n just from dims so I use copy(h.n)
-Base.similar{T}(h::PrimalEntropyLift, ::Type{T}, dims::Dims) = length(dims) == 1 ? PrimalEntropyLift{dims[1], T}(copy(h.n), h.liftid) : Array{T}(dims...)
-Base.similar{T}(h::DualEntropyLift, ::Type{T}, dims::Dims) = length(dims) == 1 ? DualEntropyLift{dims[1], T}(copy(h.n), h.equality) : Array{T}(dims...)
+Base.similar(h::PrimalEntropyLift, ::Type{T}, dims::Dims) where {T} = length(dims) == 1 ? PrimalEntropyLift{dims[1], T}(copy(h.n), h.liftid) : Array{T}(dims...)
+Base.similar(h::DualEntropyLift, ::Type{T}, dims::Dims) where {T} = length(dims) == 1 ? DualEntropyLift{dims[1], T}(copy(h.n), h.equality) : Array{T}(dims...)
 #Base.similar{T}(h::EntropyVector, ::Type{T}) = EntropyVector(h.n)
 
 # Classical Entropy Inequalities
@@ -366,7 +366,7 @@ function cardentropy(n)
 end
 
 #min(h1, h2) gives Array{Any,1} instead of EntropyVector :(
-function mymin{N, T<:Real}(h1::PrimalEntropy{N, T}, h2::PrimalEntropy{N, T}) # FIXME cannot make it work with min :(
+function mymin(h1::PrimalEntropy{N, T}, h2::PrimalEntropy{N, T}) where {N, T<:Real} # FIXME cannot make it work with min :(
     PrimalEntropy{N, T}(min(h1.h, h2.h))
 end
 
@@ -405,7 +405,7 @@ function toTikz(h::EntropyVector)
     println(join(Vector{Int}(x), " "))
 end
 
-function toTikz{T}(h::EntropyVector{Rational{T}})
+function toTikz(h::EntropyVector{Rational{T}}) where T
     x = Vector{Real}(h.h)
     i = h.h .== round(h.h)
     x[i] = Vector{Int}(h.h[i])

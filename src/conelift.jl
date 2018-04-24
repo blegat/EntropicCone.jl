@@ -1,6 +1,6 @@
 export EntropyConeLift, equalonsubsetsof!, equalvariable!
 
-type EntropyConeLift{N, T<:Real} <: AbstractEntropyCone{N, T}
+mutable struct EntropyConeLift{N, T<:Real} <: AbstractEntropyCone{N, T}
     n::Vector{Int}
     poly::Polyhedron{N, T}
 
@@ -21,11 +21,11 @@ type EntropyConeLift{N, T<:Real} <: AbstractEntropyCone{N, T}
 
 end
 
-EntropyConeLift{T<:Real}(n::Vector{Int}, A::AbstractMatrix{T}) = EntropyConeLift(n, A, IntSet([]))
+EntropyConeLift(n::Vector{Int}, A::AbstractMatrix{T}) where {T<:Real} = EntropyConeLift(n, A, IntSet([]))
 
-Base.convert{N, S<:Real,T<:Real}(::Type{EntropyConeLift{N, S}}, H::EntropyConeLift{N, T}) = EntropyConeLift{N, S}(H.n, Polyhedron{N, S}(H.poly))
+Base.convert(::Type{EntropyConeLift{N, S}}, H::EntropyConeLift{N, T}) where {N, S<:Real,T<:Real} = EntropyConeLift{N, S}(H.n, Polyhedron{N, S}(H.poly))
 
-Base.convert{N, T<:Real}(::Type{EntropyConeLift{N, T}}, h::EntropyCone{N, T}) = EntropyConeLift([h.n], h.poly)
+Base.convert(::Type{EntropyConeLift{N, T}}, h::EntropyCone{N, T}) where {N, T<:Real} = EntropyConeLift([h.n], h.poly)
 
 #Base.getindex{T<:Real}(H::EntropyConeLift{T}, i) = DualEntropyLift(H.n, H.A[i,:], i in H.equalities)
 
@@ -41,9 +41,9 @@ function rangefor(h::EntropyConeLift, id::Integer)
     UnitRange{Int}(offset + indset(h, id))
 end
 
-promote_rule{N, T<:Real}(::Type{EntropyConeLift{N, T}}, ::Type{EntropyCone{N, T}}) = EntropyConeLift{N, T}
+promote_rule(::Type{EntropyConeLift{N, T}}, ::Type{EntropyCone{N, T}}) where {N, T<:Real} = EntropyConeLift{N, T}
 
-function (*){N1, N2, T<:Real}(x::AbstractEntropyCone{N1, T}, y::AbstractEntropyCone{N2, T})
+function (*)(x::AbstractEntropyCone{N1, T}, y::AbstractEntropyCone{N2, T}) where {N1, N2, T<:Real}
     # A = [x.A zeros(T, size(x.A, 1), N2); zeros(T, size(y.A, 1), N1) y.A]
     # equalities = copy(x.equalities)
     # for eq in y.equalities
@@ -52,7 +52,7 @@ function (*){N1, N2, T<:Real}(x::AbstractEntropyCone{N1, T}, y::AbstractEntropyC
     EntropyConeLift{N1+N2, T}([x.n; y.n], x.poly * y.poly)
 end
 
-function equalonsubsetsof!{N, T}(H::EntropyConeLift{N, T}, id1, id2, S::EntropyIndex, I::EntropyIndex=emptyset(), σ=collect(1:H.n[id1]))
+function equalonsubsetsof!(H::EntropyConeLift{N, T}, id1, id2, S::EntropyIndex, I::EntropyIndex=emptyset(), σ=collect(1:H.n[id1])) where {N, T}
     if S == emptyset()
         return
     end
@@ -73,7 +73,7 @@ function equalonsubsetsof!{N, T}(H::EntropyConeLift{N, T}, id1, id2, S::EntropyI
 end
 equalonsubsetsof!(H::EntropyConeLift, id1, id2, s::Signed) = equalonsubsetsof!(H, id1, id2, set(s))
 
-function equalvariable!{N, T}(h::EntropyConeLift{N, T}, id::Integer, i::Signed, j::Signed)
+function equalvariable!(h::EntropyConeLift{N, T}, id::Integer, i::Signed, j::Signed) where {N, T}
     if id < 1 || id > length(h.n) || min(i,j) < 1 || max(i,j) > h.n[id]
         error("invalid")
     end
@@ -103,7 +103,7 @@ nadh(n, J::EntropyIndex, K::EntropyIndex, adh::Type{Val{:Self}}) = nselfadh(n, J
 nadh(n, J::EntropyIndex, K::EntropyIndex, adh::Type{Val{:NoAdh}}) = n
 nadh(n, J::EntropyIndex, K::EntropyIndex, adh::Symbol) = nadh(n, J, K, Val{adh})
 
-function inneradhesivelift{N, T}(h::EntropyCone{N, T}, J::EntropyIndex, K::EntropyIndex)
+function inneradhesivelift(h::EntropyCone{N, T}, J::EntropyIndex, K::EntropyIndex) where {N, T}
     cur = polymatroidcone(T, ninneradh(h.n, J, K))
     push!(cur, submodulareq(cur.n, J, K))
     lift = h * cur
@@ -112,7 +112,7 @@ function inneradhesivelift{N, T}(h::EntropyCone{N, T}, J::EntropyIndex, K::Entro
     equalonsubsetsof!(lift, 1, 2, K, I)
     lift
 end
-function selfadhesivelift{N, T}(h::EntropyCone{N, T}, J::EntropyIndex, I::EntropyIndex)
+function selfadhesivelift(h::EntropyCone{N, T}, J::EntropyIndex, I::EntropyIndex) where {N, T}
     newn = nselfadh(h.n, J, I)
     K = setdiff(fullset(newn), fullset(h.n)) ∪ I
     cur = polymatroidcone(T, newn)
