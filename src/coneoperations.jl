@@ -3,8 +3,8 @@ import Polyhedra.polyhedron
 export getextremerays, fullin
 
 function unlift{N}(h::EntropyConeLift{N})
-  poly = getpoly(h)
-  EntropyCone(eliminate(poly, [(ntodim(h.n[1])+1):N]))
+    poly = getpoly(h)
+    EntropyCone(eliminate(poly, [(ntodim(h.n[1])+1):N]))
 end
 
 function fullin{N}(h::AbstractPrimalEntropy{N}, H::AbstractEntropyCone{N})
@@ -12,54 +12,54 @@ function fullin{N}(h::AbstractPrimalEntropy{N}, H::AbstractEntropyCone{N})
     #reducedim(&, (H.A*h.h) .>= 0, true)[1]
 end
 function partialin{NE, NC, S, T}(h::AbstractPrimalEntropy{NE, S}, H::AbstractEntropyCone{NC, T})
-  A = zeros(T, sum(ntodim(h.n)), NC)
-  offseth = 0
-  offsetsH = [0; cumsum(map(ntodim, H.n))]
-  for i in eachindex(collect(h.n)) # use of collect in case h.n is scalar
-    for j = indset(h, i)
-      A[offseth+j,offsetsH[h.liftid[i]]+j] = 1
+    A = zeros(T, sum(ntodim(h.n)), NC)
+    offseth = 0
+    offsetsH = [0; cumsum(map(ntodim, H.n))]
+    for i in eachindex(collect(h.n)) # use of collect in case h.n is scalar
+        for j = indset(h, i)
+            A[offseth+j,offsetsH[h.liftid[i]]+j] = 1
+        end
+        offseth += ntodim(h.n[i])
     end
-    offseth += ntodim(h.n[i])
-  end
-  #linset = union(H.equalities, IntSet((size(H.A,1)+1):(size(H.A,1)+offseth)))
-  linset = IntSet(1:offseth)
-  ine = hrep(A, h.h, linset)
-  !Base.isempty(Base.intersect(H.poly, ine))#CDD.HRepresentation([-H.A; A], [zeros(T, size(H.A,1)); h.h], linset))
+    #linset = union(H.equalities, IntSet((size(H.A,1)+1):(size(H.A,1)+offseth)))
+    linset = IntSet(1:offseth)
+    ine = hrep(A, h.h, linset)
+    !Base.isempty(Base.intersect(H.poly, ine))#CDD.HRepresentation([-H.A; A], [zeros(T, size(H.A,1)); h.h], linset))
 end
 
 function Base.in{NE, NC}(h::PrimalEntropy{NE}, H::EntropyCone{NC})
-  if NE > NC
-    error("The vector has a higher dimension than the cone")
-  elseif NE == NC
-    fullin(h, H)[1]
-  else
-    partialin(h, H)
-  end
+    if NE > NC
+        error("The vector has a higher dimension than the cone")
+    elseif NE == NC
+        fullin(h, H)[1]
+    else
+        partialin(h, H)
+    end
 end
 
 function Base.in(h::PrimalEntropyLift, H::EntropyConeLift)
-  if length(h.n) > length(H.n) || reducedim(|, h.n .> H.n, 1, false)[1]
-    error("The vector has a higher dimension than the cone")
-  elseif h.n == H.n
-    fullin(h, H)[1]
-  else
-    partialin(h, H)
-  end
+    if length(h.n) > length(H.n) || reducedim(|, h.n .> H.n, 1, false)[1]
+        error("The vector has a higher dimension than the cone")
+    elseif h.n == H.n
+        fullin(h, H)[1]
+    else
+        partialin(h, H)
+    end
 end
 
 function Base.in(h::PrimalEntropy, H::EntropyConeLift)
-  if h.liftid < 1 || h.liftid > length(H.n) || h.n > H.n[h.liftid]
-    error("The vector has a higher dimension than the cone")
-  elseif h.n == H.n
-    fullin(h, H)[1]
-  else
-    partialin(h, H)
-  end
+    if h.liftid < 1 || h.liftid > length(H.n) || h.n > H.n[h.liftid]
+        error("The vector has a higher dimension than the cone")
+    elseif h.n == H.n
+        fullin(h, H)[1]
+    else
+        partialin(h, H)
+    end
 end
 
 function redundant{N, S, T}(h::AbstractDualEntropy{N, S}, H::AbstractEntropyCone{N, T})
-  (isin, certificate, vertex) = ishredundant(H.poly, -h.h, zero(T), h.equality)
-  (isin, certificate, vertex)
+    (isin, certificate, vertex) = ishredundant(H.poly, -h.h, zero(T), h.equality)
+    (isin, certificate, vertex)
 end
 
 Base.in{N}(h::DualEntropy{N}, H::EntropyCone{N}) = HRepElement(h) in H.poly
@@ -67,5 +67,5 @@ Base.in{N}(h::DualEntropy{N}, H::EntropyCone{N}) = HRepElement(h) in H.poly
 Base.in{N}(h::DualEntropyLift{N}, H::EntropyConeLift{N}) = HRepElement(h) in H.poly
 
 function Base.in(h::DualEntropy, H::EntropyConeLift)
-  Base.in(DualEntropyLift(h, length(H.n)), H)
+    Base.in(DualEntropyLift(h, length(H.n)), H)
 end

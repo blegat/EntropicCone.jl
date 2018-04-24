@@ -6,41 +6,41 @@ import Base.isless
 # Entropy Vector
 
 function ntodim(n::Int)
-  # It will works with bitsets which are unsigned
-  fullset(n)
+    # It will works with bitsets which are unsigned
+    fullset(n)
 end
 function ntodim(n::Vector{Int})
-  map(ntodim, n)
+    map(ntodim, n)
 end
 
 function indset(n::Int)
-  setsto(ntodim(n))
+    setsto(ntodim(n))
 end
 
 function dimton(N)
-  n = Int(round(log2(N + 1)))
-  if ntodim(n) != N
-    error("Illegal size of entropic constraint")
-  end
-  n
+    n = Int(round(log2(N + 1)))
+    if ntodim(n) != N
+        error("Illegal size of entropic constraint")
+    end
+    n
 end
 
 abstract EntropyVector{N, T<:Real} <: AbstractArray{T, 1}
 
 function indset(h::EntropyVector, id::Int)
-  indset(h.n[id])
+    indset(h.n[id])
 end
 
 #Store vectors as tuple to reuse their `isless'
 function isless{N}(h::EntropyVector{N}, g::EntropyVector{N})
-  for i in 1:length(h.h)
-    if h.h[i] < g.h[i]
-      return true
-    elseif h.h[i] > g.h[i]
-      return false
+    for i in 1:length(h.h)
+        if h.h[i] < g.h[i]
+            return true
+        elseif h.h[i] > g.h[i]
+            return false
+        end
     end
-  end
-  return false
+    return false
 end
 
 Base.size{N}(h::EntropyVector{N}) = (N,)
@@ -63,31 +63,31 @@ Base.setindex!{N, T}(h::EntropyVector{N, T}, v::T, i::Int) = h.h[i] = v
 abstract AbstractDualEntropy{N, T<:Real} <: EntropyVector{N, T}
 
 type DualEntropy{N, T<:Real, AT<:AbstractVector{T}} <: AbstractDualEntropy{N, T}
-  n::Int
-  h::AT
-  equality::Bool
-  liftid::Int
+    n::Int
+    h::AT
+    equality::Bool
+    liftid::Int
 
-  function DualEntropy(n::Int, equality::Bool=false, liftid::Int=1)
-    if ntodim(n) != N
-      error("Number of variables and dimension does not match")
+    function DualEntropy(n::Int, equality::Bool=false, liftid::Int=1)
+        if ntodim(n) != N
+            error("Number of variables and dimension does not match")
+        end
+        if liftid < 1
+            error("liftid must be positive")
+        end
+        new(n, Array{T, 1}(N), equality, liftid)
     end
-    if liftid < 1
-      error("liftid must be positive")
-    end
-    new(n, Array{T, 1}(N), equality, liftid)
-  end
 
-  function DualEntropy(h::AbstractVector{T}, equality::Bool=false, liftid::Int=1)
-    if N != length(h)
-      error("Dimension N should be equal to the length of h")
+    function DualEntropy(h::AbstractVector{T}, equality::Bool=false, liftid::Int=1)
+        if N != length(h)
+            error("Dimension N should be equal to the length of h")
+        end
+        n = Int(round(log2(N + 1)))
+        if ntodim(n) != N
+            error("Illegal size of entropic constraint")
+        end
+        new(n, h, equality, liftid)
     end
-    n = Int(round(log2(N + 1)))
-    if ntodim(n) != N
-      error("Illegal size of entropic constraint")
-    end
-    new(n, h, equality, liftid)
-  end
 
 end
 
@@ -108,42 +108,42 @@ end
 Polyhedra.hrep(hs::DualEntropy) = hrep([hs])
 
 function setequality(h::DualEntropy, eq::Bool)
-  h.equality = eq
-  h
+    h.equality = eq
+    h
 end
 
 #Base.convert{N, T}(::Type{HRepresentation{T}}, h::DualEntropy{N, T}) = Base.convert(HRepresentation{T}, [h])
 #Doesn't work
 
 type DualEntropyLift{N, T<:Real} <: AbstractDualEntropy{N, T}
-  n::Vector{Int}
-  h::AbstractVector{T}
-  equality::Bool
+    n::Vector{Int}
+    h::AbstractVector{T}
+    equality::Bool
 
-  function DualEntropyLift(n::Vector{Int}, h::AbstractVector{T}=spzeros(T, N), equality::Bool=false)
-    if sum(ntodim(n)) != N
-      error("Number of variables and dimension does not match")
+    function DualEntropyLift(n::Vector{Int}, h::AbstractVector{T}=spzeros(T, N), equality::Bool=false)
+        if sum(ntodim(n)) != N
+            error("Number of variables and dimension does not match")
+        end
+        if N != length(h)
+            error("Dimension N should be equal to the length of h")
+        end
+        new(n, h, equality)
     end
-    if N != length(h)
-      error("Dimension N should be equal to the length of h")
-    end
-    new(n, h, equality)
-  end
 
-  function DualEntropyLift(n::Vector{Int}, equality::Bool)
-    if sum(ntodim(n)) != N
-      error("Number of variables and dimension does not match")
+    function DualEntropyLift(n::Vector{Int}, equality::Bool)
+        if sum(ntodim(n)) != N
+            error("Number of variables and dimension does not match")
+        end
+        new(n, spzeros(T, N), equality)
     end
-    new(n, spzeros(T, N), equality)
-  end
 
 end
 
 function DualEntropyLift{N, T}(h::DualEntropy{N, T}, m)
-  hlift = spzeros(T, m*N)
-  offset = (h.liftid-1)*N
-  hlift[(offset+1):(offset+N)] = h.h
-  DualEntropyLift{m*N, T}(h.n*ones(Int, m), hlift, h.equality)
+    hlift = spzeros(T, m*N)
+    offset = (h.liftid-1)*N
+    hlift[(offset+1):(offset+N)] = h.h
+    DualEntropyLift{m*N, T}(h.n*ones(Int, m), hlift, h.equality)
 end
 
 DualEntropyLift{T<:Real}(n::Array{Int,1}, h::Array{T,1}, equality::Bool=false) = DualEntropyLift{length(h), T}(n, h, equality)
@@ -153,79 +153,79 @@ HRepElement{N, T}(h::Union{DualEntropy{N, T}, DualEntropyLift{N, T}}) = h.equali
 abstract AbstractPrimalEntropy{N, T<:Real} <: EntropyVector{N, T}
 
 type PrimalEntropy{N, T<:Real} <: AbstractPrimalEntropy{N, T}
-  n::Int
-  h::AbstractArray{T, 1}
-  liftid::Int # 1 by default: the first cone of the lift
+    n::Int
+    h::AbstractArray{T, 1}
+    liftid::Int # 1 by default: the first cone of the lift
 
-  function PrimalEntropy(n::Int, liftid::Int=1)
-    if ntodim(n) != N
-      error("Number of variables and dimension does not match")
+    function PrimalEntropy(n::Int, liftid::Int=1)
+        if ntodim(n) != N
+            error("Number of variables and dimension does not match")
+        end
+        new(n, Array{T, 1}(N), liftid)
     end
-    new(n, Array{T, 1}(N), liftid)
-  end
 
-  function PrimalEntropy(h::AbstractArray{T, 1}, liftid::Int=1)
-    if N != length(h)
-      error("Dimension N should be equal to the length of h")
+    function PrimalEntropy(h::AbstractArray{T, 1}, liftid::Int=1)
+        if N != length(h)
+            error("Dimension N should be equal to the length of h")
+        end
+        n = Int(round(log2(N + 1)))
+        if ntodim(n) != N
+            error("Illegal size of entropic constraint")
+        end
+        new(n, h, liftid)
     end
-    n = Int(round(log2(N + 1)))
-    if ntodim(n) != N
-      error("Illegal size of entropic constraint")
-    end
-    new(n, h, liftid)
-  end
 
 end
 
 PrimalEntropy{T<:Real}(h::AbstractArray{T, 1}, liftid::Int=1) = PrimalEntropy{length(h), T}(h, liftid)
 
 type PrimalEntropyLift{N, T<:Real} <: AbstractPrimalEntropy{N, T}
-  n::Array{Int,1}
-  h::AbstractArray{T, 1}
-  liftid::Array{Int,1}
+    n::Array{Int,1}
+    h::AbstractArray{T, 1}
+    liftid::Array{Int,1}
 
-  #function PrimalEntropyLift(n::Array{Int,1}, liftid::Array{Int,1})
-  #  new(n, sum(ntodim(n)), liftid)
-  #end
+    #function PrimalEntropyLift(n::Array{Int,1}, liftid::Array{Int,1})
+    #  new(n, sum(ntodim(n)), liftid)
+    #end
 
-  function PrimalEntropyLift(n::Array{Int,1}, h::AbstractArray{T, 1}, liftid::Array{Int,1})
-    if sum(ntodim(n)) != N
-      error("Number of variables and dimension does not match")
+    function PrimalEntropyLift(n::Array{Int,1}, h::AbstractArray{T, 1}, liftid::Array{Int,1})
+        if sum(ntodim(n)) != N
+            error("Number of variables and dimension does not match")
+        end
+        new(n, h, liftid)
     end
-    new(n, h, liftid)
-  end
 
 end
 
 PrimalEntropyLift{T<:Real}(n::Array{Int,1}, h::AbstractArray{T, 1}, liftid::Array{Int,1}) = PrimalEntropyLift{Int(sum(ntodim(n))), T}(n, h, liftid)
 
 function (*){N1, N2, T<:Real}(h1::AbstractPrimalEntropy{N1, T}, h2::AbstractPrimalEntropy{N2, T})
-  if length(h1.liftid) + length(h2.liftid) != length(union(IntSet(h1.liftid), IntSet(h2.liftid)))
-    error("liftids must differ")
-  end
-  PrimalEntropyLift([h1.n; h2.n], [h1.h; h2.h], [h1.liftid; h2.liftid])
+    if length(h1.liftid) + length(h2.liftid) != length(union(IntSet(h1.liftid), IntSet(h2.liftid)))
+        error("liftids must differ")
+    end
+    PrimalEntropyLift([h1.n; h2.n], [h1.h; h2.h], [h1.liftid; h2.liftid])
 end
 
 Base.convert{N, T<:Real,S<:Real}(::Type{PrimalEntropy{N, T}}, h::PrimalEntropy{N, S}) = PrimalEntropy(Array{T}(h.h))
 
 function subpdf{n}(p::Array{Float64,n}, S::EntropyIndex)
-  cpy = copy(p)
-  for j = 1:n
-    if !myin(j, S)
-      cpy = reducedim(+, cpy, j, 0.)
+    cpy = copy(p)
+    for j = 1:n
+        if !myin(j, S)
+            cpy = reducedim(+, cpy, j, 0.)
+        end
     end
-  end
-  cpy
+    cpy
 end
 
 subpdf{n}(p::Array{Float64,n}, s::Signed) = subpdf(p, set(s))
 
 function entropyfrompdf{n}(p::Array{Float64,n})
-  h = PrimalEntropy{Int(ntodim(n)), Float64}(n, 1)
-  for i = indset(n)
-    h[i] = -sum(map(xlogx, subpdf(p, i)))
-  end
-  h
+    h = PrimalEntropy{Int(ntodim(n)), Float64}(n, 1)
+    for i = indset(n)
+        h[i] = -sum(map(xlogx, subpdf(p, i)))
+    end
+    h
 end
 
 (-){N, T<:Real}(h::PrimalEntropy{N, T})     = PrimalEntropy{N, T}(-h.h, h.liftid)
@@ -234,21 +234,21 @@ end
 (-){N, T<:Real}(h::DualEntropyLift{N, T})   =   DualEntropyLift{N, T}(h.n, -h.h, h.equality)
 
 function constprimalentropy{T<:Real}(n, x::T)
-  PrimalEntropy(x * ones(T, ntodim(n)))
+    PrimalEntropy(x * ones(T, ntodim(n)))
 end
 function constdualentropy{T<:Real}(n, x::T)
-  if x == 0
-    DualEntropy(spzeros(T, ntodim(n)))
-  else
-    DualEntropy(x * ones(T, ntodim(n)))
-  end
+    if x == 0
+        DualEntropy(spzeros(T, ntodim(n)))
+    else
+        DualEntropy(x * ones(T, ntodim(n)))
+    end
 end
 
 function one{N,T<:Real}(h::PrimalEntropy{N,T})
-  constprimalentropy(h.n, one(T))
+    constprimalentropy(h.n, one(T))
 end
 function one{N,T<:Real}(h::DualEntropy{N,T})
-  constdualentropy(h.n, one(T))
+    constdualentropy(h.n, one(T))
 end
 
 #Base.similar(h::EntropyVector) = EntropyVector(h.n)
@@ -262,166 +262,166 @@ Base.similar{T}(h::DualEntropyLift, ::Type{T}, dims::Dims) = length(dims) == 1 ?
 
 # Classical Entropy Inequalities
 function dualentropywith(n, pos, neg)
-  ret = constdualentropy(n, 0)
-  # I use -= and += in case some I is in pos and neg
-  for I in pos
-    if I != emptyset()
-      ret[I] += 1
+    ret = constdualentropy(n, 0)
+    # I use -= and += in case some I is in pos and neg
+    for I in pos
+        if I != emptyset()
+            ret[I] += 1
+        end
     end
-  end
-  for I in neg
-    if I != emptyset()
-      ret[I] -= 1
+    for I in neg
+        if I != emptyset()
+            ret[I] -= 1
+        end
     end
-  end
-  ret
+    ret
 end
 
 function nonnegative(n, S::EntropyIndex)
-  dualentropywith(n, [S], [])
+    dualentropywith(n, [S], [])
 end
 function nonnegative(n, s::Signed)
-  nonnegative(n, set(s))
+    nonnegative(n, set(s))
 end
 
 function nondecreasing(n, S::EntropyIndex, T::EntropyIndex)
-  T = union(S, T)
-  x = dualentropywith(n, [T], [S]) # fix of weird julia bug
-  print("")
-  x
+    T = union(S, T)
+    x = dualentropywith(n, [T], [S]) # fix of weird julia bug
+    print("")
+    x
 end
 function nondecreasing(n, s::Signed, t::Signed)
-  nondecreasing(n, set(s), set(t))
+    nondecreasing(n, set(s), set(t))
 end
 
 function submodular(n, S::EntropyIndex, T::EntropyIndex, I::EntropyIndex)
-  S = union(S, I)
-  T = union(T, I)
-  U = union(S, T)
-  dualentropywith(n, [S, T], [U, I])
+    S = union(S, I)
+    T = union(T, I)
+    U = union(S, T)
+    dualentropywith(n, [S, T], [U, I])
 end
 submodular(n, S::EntropyIndex, T::EntropyIndex) = submodular(n, S, T, S ∩ T)
 submodular(n, s::Signed, t::Signed, i::Signed) = submodular(n, set(s), set(t), set(i))
 submodular(n, s::Signed, t::Signed) = submodular(n, set(s), set(t))
 
 function submodulareq(n, S::EntropyIndex, T::EntropyIndex, I::EntropyIndex)
-  h = submodular(n, S, T, I)
-  h.equality = true
-  h
+    h = submodular(n, S, T, I)
+    h.equality = true
+    h
 end
 submodulareq(n, S::EntropyIndex, T::EntropyIndex) = submodulareq(n, S, T, S ∩ T)
 submodulareq(n, s::Signed, t::Signed, i::Signed) = submodulareq(n, set(s), set(t), set(i))
 submodulareq(n, s::Signed, t::Signed) = submodulareq(n, set(s), set(t))
 
 function ingleton(n, i, j, k, l)
-  pos = []
-  I = singleton(i)
-  J = singleton(j)
-  K = singleton(k)
-  L = singleton(l)
-  ij = union(I, J)
-  kl = union(K, L)
-  ijkl = union(ij, kl)
-  for s in indset(n)
-    if issubset(s, ijkl) && card(s) == 2 && s != ij
-      pos = [pos; s]
+    pos = []
+    I = singleton(i)
+    J = singleton(j)
+    K = singleton(k)
+    L = singleton(l)
+    ij = union(I, J)
+    kl = union(K, L)
+    ijkl = union(ij, kl)
+    for s in indset(n)
+        if issubset(s, ijkl) && card(s) == 2 && s != ij
+            pos = [pos; s]
+        end
     end
-  end
-  ikl = union(I, kl)
-  jkl = union(J, kl)
-  dualentropywith(n, pos, [ij, K, L, ikl, jkl])
+    ikl = union(I, kl)
+    jkl = union(J, kl)
+    dualentropywith(n, pos, [ij, K, L, ikl, jkl])
 end
 
 function getkl(i, j)
-  x = 1:4
-  kl = x[(x.!=i) & (x.!=j)]
-  (kl[1], kl[2])
+    x = 1:4
+    kl = x[(x.!=i) & (x.!=j)]
+    (kl[1], kl[2])
 end
 
 function ingleton(i, j)
-  ingleton(4, i, j, getkl(i, j)...)
+    ingleton(4, i, j, getkl(i, j)...)
 end
 
 # Classical Entropy Vectors
 function cardminusentropy(n, I::EntropyIndex)
-  h = constprimalentropy(n, 0)
-  for J in indset(n)
-    h[J] = card(setdiff(J, I))
-  end
-  return h
+    h = constprimalentropy(n, 0)
+    for J in indset(n)
+        h[J] = card(setdiff(J, I))
+    end
+    return h
 end
 cardminusentropy(n, i::Signed) = cardminusentropy(n, set(i))
 
 function cardentropy(n)
-  return cardminusentropy(n, emptyset())
+    return cardminusentropy(n, emptyset())
 end
 
 #min(h1, h2) gives Array{Any,1} instead of EntropyVector :(
 function mymin{N, T<:Real}(h1::PrimalEntropy{N, T}, h2::PrimalEntropy{N, T}) # FIXME cannot make it work with min :(
-  PrimalEntropy{N, T}(min(h1.h, h2.h))
+    PrimalEntropy{N, T}(min(h1.h, h2.h))
 end
 
 function invalidfentropy(S::EntropyIndex)
-  n = 4
-  #ret = min(constentropy(n, 4), 2 * cardentropy(n)) #can't make it work
-  h = mymin(constprimalentropy(n, 4), cardentropy(n) * 2)
-  for i in indset(n)
-    if i != S && card(i) == 2
-      h[i] = 3
+    n = 4
+    #ret = min(constentropy(n, 4), 2 * cardentropy(n)) #can't make it work
+    h = mymin(constprimalentropy(n, 4), cardentropy(n) * 2)
+    for i in indset(n)
+        if i != S && card(i) == 2
+            h[i] = 3
+        end
     end
-  end
-  return h
+    return h
 end
 
 function invalidfentropy(s::Signed)
-  return invalidfentropy(set(s))
+    return invalidfentropy(set(s))
 end
 
 function matusrentropy(t, S::EntropyIndex)
-  n = 4
-  h = mymin(constprimalentropy(n, t), cardminusentropy(n, S))
-  return h
+    n = 4
+    h = mymin(constprimalentropy(n, t), cardminusentropy(n, S))
+    return h
 end
 
 function matusrentropy(t, s::Signed)
-  return matusrentropy(t, set(s))
+    return matusrentropy(t, set(s))
 end
 
 # Manipulation
 
 function toTikz(h::EntropyVector)
-  dens = [el.den for el in h.h]
-  hlcm = reduce(lcm, 1, dens)
-  x = h.h * hlcm
-  println(join(Vector{Int}(x), " "))
+    dens = [el.den for el in h.h]
+    hlcm = reduce(lcm, 1, dens)
+    x = h.h * hlcm
+    println(join(Vector{Int}(x), " "))
 end
 
 function toTikz{T}(h::EntropyVector{Rational{T}})
-  x = Vector{Real}(h.h)
-  i = h.h .== round(h.h)
-  x[i] = Vector{Int}(h.h[i])
-  println(join(x, " "))
+    x = Vector{Real}(h.h)
+    i = h.h .== round(h.h)
+    x[i] = Vector{Int}(h.h[i])
+    println(join(x, " "))
 end
 
 function Base.show(io::IO, h::EntropyVector)
-  offset = 0
-  for i in eachindex(collect(h.n))
-    for l in h.n[i]:-1:1
-      for j in indset(h, i)
-        if card(j) == l
-          bitmap = bits(j)[end-h.n[i]+1:end]
-          val = h.h[offset+j]
-          if val == 0
-            print(io, " $(bitmap):$(val)")
-          else
-            print_with_color(:blue, io, " $(bitmap):$(val)")
-          end
+    offset = 0
+    for i in eachindex(collect(h.n))
+        for l in h.n[i]:-1:1
+            for j in indset(h, i)
+                if card(j) == l
+                    bitmap = bits(j)[end-h.n[i]+1:end]
+                    val = h.h[offset+j]
+                    if val == 0
+                        print(io, " $(bitmap):$(val)")
+                    else
+                        print_with_color(:blue, io, " $(bitmap):$(val)")
+                    end
+                end
+            end
+            if i != length(h.n) || l != 1
+                println(io)
+            end
         end
-      end
-      if i != length(h.n) || l != 1
-        println(io)
-      end
+        offset += ntodim(h.n[i])
     end
-    offset += ntodim(h.n[i])
-  end
 end

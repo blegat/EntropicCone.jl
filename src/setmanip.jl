@@ -24,76 +24,76 @@ const EntropyIndex = UInt
 # end
 
 function Base.setdiff(S::EntropyIndex, I::EntropyIndex)
-  S & (~I)
+    S & (~I)
 end
 
 # S ∪ T
 function Base.union(S::EntropyIndex, T::EntropyIndex)
-  S | T
+    S | T
 end
 
 # S ∩ T
 function Base.intersect(S::EntropyIndex, T::EntropyIndex)
-  S & T
+    S & T
 end
 
 # S ⊆ T
 function issubset(S::EntropyIndex, T::EntropyIndex)
-  Base.setdiff(S, T) == zero(S)
+    Base.setdiff(S, T) == zero(S)
 end
 
 function singleton(i::Integer)
-  EntropyIndex(1) << (i-1)
+    EntropyIndex(1) << (i-1)
 end
 
 function fullset(n::Integer)
-  (EntropyIndex(1) << n) - EntropyIndex(1)
+    (EntropyIndex(1) << n) - EntropyIndex(1)
 end
 
 function set(i::Integer)
-  ret = emptyset()
-  while i > 0
-    ret = union(ret, singleton(i % 10))
-    i = div(i, 10)
-  end
-  ret
+    ret = emptyset()
+    while i > 0
+        ret = union(ret, singleton(i % 10))
+        i = div(i, 10)
+    end
+    ret
 end
 function set{S<:Integer}(I::AbstractArray{S})
-  ret = emptyset()
-  for i in I
-    ret = union(ret, singleton(i))
-  end
-  ret
+    ret = emptyset()
+    for i in I
+        ret = union(ret, singleton(i))
+    end
+    ret
 end
 
 
 function myin(i::Signed, I::EntropyIndex)
-  (singleton(i) & I) != 0
+    (singleton(i) & I) != 0
 end
 
 function card(S::EntropyIndex)
-  sum = 0
-  while S > 0
-    sum += S & 1
-    S >>= 1
-  end
-  Signed(sum)
+    sum = 0
+    while S > 0
+        sum += S & 1
+        S >>= 1
+    end
+    Signed(sum)
 end
 
 function emptyset()
-  EntropyIndex(0)
+    EntropyIndex(0)
 end
 
 function setsto(J::EntropyIndex)
-  EntropyIndex(1):J
+    EntropyIndex(1):J
 end
 
 function mymap(map::Vector, S::EntropyIndex, n)
-  T = emptyset()
-  for i in 1:n
-    if myin(i, S)
-      T = T ∪ singleton(map[i])
+    T = emptyset()
+    for i in 1:n
+        if myin(i, S)
+            T = T ∪ singleton(map[i])
+        end
     end
-  end
-  T
+    T
 end
