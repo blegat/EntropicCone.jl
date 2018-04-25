@@ -25,7 +25,7 @@ function dimton(N)
     n
 end
 
-abstract type EntropyVector{N, T<:Real} <: AbstractVector{T} end
+abstract type EntropyVector{N, T<:Real} end # <: AbstractVector{T} end
 
 function indset(h::EntropyVector, id::Int)
     indset(h.n[id])
@@ -48,7 +48,7 @@ Base.linearindexing(::Type{EntropyVector}) = Base.LinearFast()
 #Base.getindex(h::EntropyVector, i::Int) = h.h[i]
 #Base.getindex{T}(h::EntropyVector, i::AbstractArray{T,1}) = EntropyVector(h.h[i])
 Base.getindex(h::EntropyVector, i) = h.h[i]
-Base.setindex!(h::EntropyVector{N, T}, v::T, i::Int) where {N, T} = h.h[i] = v
+Base.setindex!(h::EntropyVector{N, T}, v::T, i::Integer) where {N, T} = h.h[i] = v
 
 #function *(x, h::EntropyVector)
 #  EntropyVector(x * h.h)
