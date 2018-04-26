@@ -57,14 +57,14 @@ function Base.in(h::PrimalEntropy, H::EntropyConeLift)
     end
 end
 
-function redundant(h::AbstractDualEntropy{N, S}, H::AbstractEntropyCone{N, T}) where {N, S, T}
-    (isin, certificate, vertex) = ishredundant(H.poly, -h.h, zero(T), h.equality)
+function redundant(h::AbstractDualEntropy{L, N, S}, H::AbstractEntropyCone{N, T}) where {L, N, S, T}
+    (isin, certificate, vertex) = ishredundant(H.poly, -h.h, zero(promote_type(S, T)), h.equality)
     (isin, certificate, vertex)
 end
 
-Base.in(h::DualEntropy{N}, H::EntropyCone{N}) where {N} = HRepElement(h) in H.poly
+Base.in(h::DualEntropy, H::EntropyCone) = HRepElement(h) in H.poly
 
-Base.in(h::DualEntropyLift{N}, H::EntropyConeLift{N}) where {N} = HRepElement(h) in H.poly
+Base.in(h::DualEntropyLift, H::EntropyConeLift) = HRepElement(h) in H.poly
 
 function Base.in(h::DualEntropy, H::EntropyConeLift)
     Base.in(DualEntropyLift(h, length(H.n)), H)

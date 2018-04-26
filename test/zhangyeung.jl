@@ -1,6 +1,8 @@
 @testset "Zhang-Yeung inequality" begin
     n = 4
-    G = polymatroidcone(n)
+    G = polymatroidcone(n, SimplePolyhedraLibrary{Float64}(lp_solver))
+    # This vector is not entropic but it is a polymatroid
+    invalidf = invalidfentropy(12)
 
     @testset "Basic tests" begin
         @test matusrentropy(1, 14) in G
@@ -8,10 +10,7 @@
         @test matusrentropy(1, 24) in G
         @test matusrentropy(2, 3) in G
         @test matusrentropy(2, 4) in G
-        @testset "Non-entropic vector invalidf" begin
-            # This vector is not entropic
-            invalidf = invalidfentropy(12)
-            # but it is a polymatroid
+        @testset "Non-entropic but polymatroid vector invalidf" begin
             @test invalidf in G
         end
     end

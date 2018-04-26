@@ -50,13 +50,13 @@ function getextremerays(h::EntropyCone)
     [PrimalEntropy(ext.R[i,:]) for i in 1:size(ext.R, 1)]
 end
 
-function push!(H::AbstractEntropyCone{N, T}, h::AbstractDualEntropy{N, S}) where {N, T, S}
+function push!(H::AbstractEntropyCone{N}, h::AbstractDualEntropy{L, N}) where {L, N}
     if H.n != h.n
         error("The dimension of the cone and entropy differ")
     end
     push!(H.poly, hrep(h))
 end
-function push!(H::EntropyCone{N, T}, h::Vector{DualEntropy{N, S}}) where {N, T, S}
+function push!(H::EntropyCone{N}, h::Vector{<:DualEntropy{L, N}}) where {L, N}
     push!(H.poly, hrep(h))
 end
 
@@ -104,24 +104,24 @@ function polymatroidcone(::Type{T}, n::Integer, lib = nothing, minimal = true) w
     hss = Vector{HT}(n_nonnegative + n_nondecreasing + n_submodular)
     for j = 1:n
         for k = (j+1):n
-            hss[offset_submodular+cur_submodular] = submodular(n, set(j), set(k))
+            hss[offset_submodular+cur_submodular] = HRepElement(submodular(n, set(j), set(k)))
             cur_submodular += 1
         end
     end
     for I = indset(n)
         if !minimal
-            hss[offset_nonnegative+cur_nonnegative] = nonnegative(n, I)
+            hss[offset_nonnegative+cur_nonnegative] = HRepElement(nonnegative(n, I))
             cur_nonnegative += 1
         end
         for j = 1:n
             if !myin(j, I)
                 if !minimal || card(I) == n-1
-                    hss[offset_nondecreasing+cur_nondecreasing] = nondecreasing(n, I, set(j))
+                    hss[offset_nondecreasing+cur_nondecreasing] = HRepElement(nondecreasing(n, I, set(j)))
                     cur_nondecreasing += 1
                 end
                 for k = (j+1):n
                     if !myin(k, I)
-                        hss[offset_submodular+cur_submodular] = submodular(n, set(j), set(k), I)
+                        hss[offset_submodular+cur_submodular] = HRepElement(submodular(n, set(j), set(k), I))
                         cur_submodular += 1
                     end
                 end
