@@ -120,7 +120,7 @@ end
 DualEntropyLift{L}(n::Vector{Int}, h::AbstractVector{T}) where {L, T} = DualEntropyLift{L, length(h), T}(n, h)
 
 Polyhedra.HRepElement(h::Union{DualEntropy{true, N, T}, DualEntropyLift{true, N, T}}) where {N, T}  = HyperPlane(h.h, zero(T))
-Polyhedra.HRepElement(h::Union{DualEntropy{false, N, T}, DualEntropyLift{false, N, T}}) where {N, T} = HalfSpace(h.h, zero(T))
+Polyhedra.HRepElement(h::Union{DualEntropy{false, N, T}, DualEntropyLift{false, N, T}}) where {N, T} = HalfSpace(-h.h, zero(T))
 Polyhedra.hrep(hs::Vector{<:DualEntropy}) = hrep(HRepElement.(hs))
 Polyhedra.hrep(hs::DualEntropy) = hrep([hs])
 #function Base.convert(::Type{HyperPlane{N, T, AT}}, h::DualEntropy{true, N}) where {N, T, AT}
