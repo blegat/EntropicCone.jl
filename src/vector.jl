@@ -1,6 +1,6 @@
 export EntropyVector
 export PrimalEntropy, cardminusentropy, cardentropy, invalidfentropy, matusrentropy, entropyfrompdf, subpdf, toTikz
-export DualEntropy, DualEntropyLift, nonnegative, nondecreasing, submodular, submodulareq, ingleton
+export DualEntropy, DualEntropyLift, nonnegative, nondecreasing, submodular, submodulareq, ingleton, setequality
 import Base.isless
 
 # Entropy Vector
@@ -87,8 +87,6 @@ DualEntropy{L, N}(n::Int, h::AbstractVector{T}, liftid::Int=1) where {L, N, T} =
 DualEntropy{L, N}(h::AbstractVector, liftid::Int=1) where {L, N} = DualEntropy{L, N}(dimton(N), h, liftid)
 DualEntropy{L}(h::AbstractVector{T}, liftid::Int=1) where {L, T} = DualEntropy{L, length(h)}(h, liftid)
 
-setequality(h::DualEntropy{false, N}) where N = DualEntropy{true, N}(h.n, h.h, h.liftid)
-
 #Base.convert{N, T}(::Type{HRepresentation{T}}, h::DualEntropy{N, T}) = Base.convert(HRepresentation{T}, [h])
 #Doesn't work
 
@@ -115,7 +113,11 @@ function DualEntropyLift(h::DualEntropy{L, N, T}, m) where {L, N, T}
     DualEntropyLift{L, m*N, T}(h.n*ones(Int, m), hlift)
 end
 
-DualEntropyLift{L}(n::Vector{Int}, h::AbstractVector{T}) where {L, T} = DualEntropyLift{L, length(h), T}(n, h)
+DualEntropyLift{L, N}(n::Vector{Int}, h::AbstractVector{T}) where {L, N, T} = DualEntropyLift{L, N, T}(n, h)
+DualEntropyLift{L}(n::Vector{Int}, h::AbstractVector) where L = DualEntropyLift{L, length(h)}(n, h)
+
+setequality(h::DualEntropy{false, N}) where N = DualEntropy{true, N}(h.n, h.h, h.liftid)
+setequality(h::DualEntropyLift{false, N}) where N = DualEntropyLift{true, N}(h.n, h.h)
 
 Polyhedra.HRepElement(h::Union{DualEntropy{true, N, T}, DualEntropyLift{true, N, T}}) where {N, T}  = HyperPlane(h.h, zero(T))
 Polyhedra.HRepElement(h::Union{DualEntropy{false, N, T}, DualEntropyLift{false, N, T}}) where {N, T} = HalfSpace(-h.h, zero(T))
@@ -223,35 +225,35 @@ Base.:(==)(h1::PrimalEntropy{N}, h2::PrimalEntropy{N}) where N = h1.liftid == h2
 Base.:(==)(h1::DualEntropy{N}, h2::DualEntropy{N}) where N = h1.liftid == h2.liftid && h1.h == h2.h
 function Base.:(+)(h1::PrimalEntropy{N}, h2::PrimalEntropy{N}) where N
     @assert h1.liftid == h2.liftid
-    PrimalEntropy{N}(h1.h + h2.h, h1.liftid)
+    PrimalEntropy{N}(h1.n, h1.h + h2.h, h1.liftid)
 end
 function Base.:(+)(h1::DualEntropy{L, N}, h2::DualEntropy{L, N}) where {L, N}
     @assert h1.liftid == h2.liftid
-    DualEntropy{L, N}(h1.h + h2.h, h1.liftid)
+    DualEntropy{L, N}(h1.n, h1.h + h2.h, h1.liftid)
 end
 function Base.:(+)(h1::PrimalEntropyLift{N}, h2::PrimalEntropyLift{N}) where N
     @assert h1.n == h2.n
-    PrimalEntropyLift{N}(h1.h + h2.h, h1.liftid)
+    PrimalEntropyLift{N}(h1.n, h1.h + h2.h, h1.liftid)
 end
 function Base.:(+)(h1::DualEntropyLift{L, N}, h2::DualEntropyLift{L, N}) where {L, N}
     @assert h1.n == h2.n
-    DualEntropyLift{L, N}(h1.h + h2.h, h1.liftid)
+    DualEntropyLift{L, N}(h1.n, h1.h + h2.h, h1.liftid)
 end
 function Base.:(-)(h1::PrimalEntropy{N}, h2::PrimalEntropy{N}) where N
     @assert h1.liftid == h2.liftid
-    PrimalEntropy{N}(h1.h - h2.h, h1.liftid)
+    PrimalEntropy{N}(h1.n, h1.h - h2.h, h1.liftid)
 end
 function Base.:(-)(h1::DualEntropy{L, N}, h2::DualEntropy{L, N}) where {L, N}
     @assert h1.liftid == h2.liftid
-    DualEntropy{L, N}(h1.h - h2.h, h1.liftid)
+    DualEntropy{L, N}(h1.n, h1.h - h2.h, h1.liftid)
 end
 function Base.:(-)(h1::PrimalEntropyLift{N}, h2::PrimalEntropyLift{N}) where N
     @assert h1.n == h2.n
-    PrimalEntropyLift{N}(h1.h - h2.h, h1.liftid)
+    PrimalEntropyLift{N}(h1.n, h1.h - h2.h, h1.liftid)
 end
 function Base.:(-)(h1::DualEntropyLift{L, N}, h2::DualEntropyLift{L, N}) where {L, N}
     @assert h1.n == h2.n
-    DualEntropyLift{L, N}(h1.h - h2.h, h1.liftid)
+    DualEntropyLift{L, N}(h1.n, h1.h - h2.h)
 end
 
 function constprimalentropy(n, x::T) where T<:Real
@@ -352,7 +354,7 @@ end
 
 function getkl(i, j)
     x = 1:4
-    kl = x[(x.!=i) & (x.!=j)]
+    kl = x[(x .!= i) .& (x .!= j)]
     (kl[1], kl[2])
 end
 

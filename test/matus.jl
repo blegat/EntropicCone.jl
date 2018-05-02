@@ -1,21 +1,17 @@
-@testset "Matus" begin
+@testset "Matúš" begin
     function eq3(id1, id2)
         h1 = submodular(5,2,4,3) + submodular(5,3,4,2)
         h2 = submodular(5,3,4,2) + submodular(5,2,4,3)
         h1.liftid = id1
         h2.liftid = id2
-        h = DualEntropyLift(h1, 3) - DualEntropyLift(h2, 3)
-        h.equality = true
-        h
+        setequality(DualEntropyLift(h1, 3) - DualEntropyLift(h2, 3))
     end
     function eq4(id1, id2)
         h1 = ingleton(5,1,2,3,4)
         h2 = ingleton(5,1,2,3,4)
         h1.liftid = id1
         h2.liftid = id2
-        h = DualEntropyLift(h1, 3) - DualEntropyLift(h2, 3)
-        h.equality = true
-        h
+        setequality(DualEntropyLift(h1, 3) - DualEntropyLift(h2, 3))
     end
     function supmodular()
         submodular(5,3,4,5) + submodular(5,4,5,3) + submodular(5,3,5,4)
@@ -27,9 +23,7 @@
         (submodular(5,1,5,34) + submodular(5,2,5,34) + submodular(5,12,5,34))
         h1.liftid = id1
         h2.liftid = id2
-        h = DualEntropyLift(h1, 3) - DualEntropyLift(h2, 3)
-        h.equality = true
-        h
+        setequality(DualEntropyLift(h1, 3) - DualEntropyLift(h2, 3))
     end
     function cor1(id1, id2)
         h1 = ingleton(5,1,2,3,4) + supmodular()
@@ -48,9 +42,9 @@
         h
     end
 
-    G1 = polymatroidcone(5)
-    G2 = polymatroidcone(5)
-    G3 = polymatroidcone(5)
+    G1 = polymatroidcone(5, SimplePolyhedraLibrary{Float64}(lp_solver))
+    G2 = polymatroidcone(5, SimplePolyhedraLibrary{Float64}(lp_solver))
+    G3 = polymatroidcone(5, SimplePolyhedraLibrary{Float64}(lp_solver))
     intersect!(G2, submodulareq(5, 5, 12, 34))
     #intersect!(G3, submodulareq(5, 5, 12, 34))
     intersect!(G3, submodulareq(5, 5, 13, 24))
@@ -72,28 +66,28 @@
     lemma3_12 = lemma3(1,2)
     @test lemma3_12 in G
     cor1_12 = cor1(1,2)
-    @test_broken cor1_12 in G
+    @test cor1_12 in G
     eq5_12 = eq5(1,2)
-    @test_broken eq5_12 in G
+    @test eq5_12 in G
 
     for s in 0:5
-        #@test (matus51(s) in G) == (s <= 2)
+        @test (matus51(s) in G) == (s <= 2)
     end
 
     equalvariable!(G, 1, 2, 5)
     for s in 0:5
         cons4 = matus41(s)
         @test cons4 == (2*s * (submodular(4,3,4,1) + submodular(4,3,4,2) + submodular(4,1,2) - submodular(4,3,4)) + 2*submodular(4,2,3,4) + s*(s+1)*(submodular(4,2,4,3)+submodular(4,3,4,2)))
-        cons5 = DualEntropy([cons4.h; zeros(Int, 16)])
-        #@test (cons5 in G) == (s <= 2)
+        cons5 = DualEntropy{false}([cons4.h; zeros(Int, 16)])
+        @test (cons5 in G) == (s <= 2)
     end
-    # for i = 0:10
-    #   s = 1 << i
-    #   cons4 = constraint4(s)
-    #   cons5 = DualEntropy([cons4.h; zeros(Int, 16)])
-    #   println(s)
-    #   println(cons5 in G)
-    # end
+    #for i = 0:10
+    #  s = 1 << i
+    #  cons4 = constraint4(s)
+    #  cons5 = DualEntropy([cons4.h; zeros(Int, 16)])
+    #  println(s)
+    #  println(cons5 in G)
+    #end
 
     p4 = zeros(Float64,2,2,1,1)
     p4[1,1,1,1] = 1/2
@@ -112,7 +106,7 @@
     #R = ((r5 * r52) * r53)
     #println(R in G)
     #@test r4 == R[1:15]
-    @test r4 == r5[1:15]
+    @test r4.h == r5[1:15]
     @test r4 in G
     @test r5 in G
     #println(invalidfentropy(12) in G)
@@ -180,8 +174,8 @@
     hxi5 = (hxi05 * hxi15) * hxi25
 
     @test hxi04 == hxi(0)
-    @test hxi05[1:15] == hxi(0)
-    @test hxi5[1:15] == hxi(0)
+    @test hxi05[1:15] == hxi(0).h
+    @test hxi5[1:15] == hxi(0).h
 
     Gf = EntropyConeLift{fulldim(G), Float64}(G)
 

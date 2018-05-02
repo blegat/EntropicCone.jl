@@ -12,19 +12,17 @@ function fullin(h::AbstractPrimalEntropy{N}, H::AbstractEntropyCone{N}) where N
     #reducedim(&, (H.A*h.h) .>= 0, true)[1]
 end
 function partialin(h::AbstractPrimalEntropy{NE, S}, H::AbstractEntropyCone{NC, T}) where {NE, NC, S, T}
-    A = zeros(T, sum(ntodim(h.n)), NC)
+    hps = HyperPlane{NC, T, SparseVector{T, Int}}[]
     offseth = 0
     offsetsH = [0; cumsum(map(ntodim, H.n))]
     for i in eachindex(collect(h.n)) # use of collect in case h.n is scalar
-        for j = indset(h, i)
-            A[offseth+j,offsetsH[h.liftid[i]]+j] = 1
+        for j in indset(h, i)
+            col = offsetsH[h.liftid[i]]+j
+            push!(hps, HyperPlane(sparsevec([col], [one(T)], NC), T(h.h[offseth+j])))
         end
         offseth += ntodim(h.n[i])
     end
-    #linset = union(H.equalities, IntSet((size(H.A,1)+1):(size(H.A,1)+offseth)))
-    linset = IntSet(1:offseth)
-    ine = hrep(A, h.h, linset)
-    !Base.isempty(Base.intersect(H.poly, ine))#CDD.HRepresentation([-H.A; A], [zeros(T, size(H.A,1)); h.h], linset))
+    !isempty(H.poly ∩ hrep(hps))
 end
 
 function Base.in(h::PrimalEntropy{NE}, H::EntropyCone{NC}) where {NE, NC}
@@ -57,10 +55,10 @@ function Base.in(h::PrimalEntropy, H::EntropyConeLift)
     end
 end
 
-function redundant(h::AbstractDualEntropy{L, N, S}, H::AbstractEntropyCone{N, T}) where {L, N, S, T}
-    (isin, certificate, vertex) = ishredundant(H.poly, -h.h, zero(promote_type(S, T)), h.equality)
-    (isin, certificate, vertex)
-end
+#function redundant(h::AbstractDualEntropy{L, N, S}, H::AbstractEntropyCone{N, T}) where {L, N, S, T}
+#    (isin, certificate, vertex) = ishredundant(H.poly, HRepElement(h))
+#    (isin, certificate, vertex)
+#end
 
 Base.in(h::DualEntropy, H::EntropyCone) = H.poly ⊆ HRepElement(h)
 

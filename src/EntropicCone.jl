@@ -2,9 +2,8 @@ module EntropicCone
 
 using MathProgBase
 using Polyhedra
-#using CDDLib
 
-import Base.setindex!, Base.*, Base.show, Base.getindex, Base.setdiff, Base.union, Base.issubset, Base.promote_rule, Base.in, Base.-, Base.push!, Base.copy, Base.intersect!, Base.intersect
+import Base.setindex!, Base.*, Base.show, Base.getindex, Base.setdiff, Base.union, Base.issubset, Base.promote_rule, Base.in, Base.-, Base.copy, Base.intersect
 
 include("entropy.jl")
 include("setmanip.jl")
