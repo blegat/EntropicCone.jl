@@ -105,7 +105,7 @@ nadh(n, J::EntropyIndex, K::EntropyIndex, adh::Symbol) = nadh(n, J, K, Val{adh})
 
 function inneradhesivelift(h::EntropyCone{N, T}, J::EntropyIndex, K::EntropyIndex) where {N, T}
     cur = polymatroidcone(T, ninneradh(h.n, J, K))
-    push!(cur, submodulareq(cur.n, J, K))
+    intersect!(cur, submodulareq(cur.n, J, K))
     lift = h * cur
     I = J ∩ K
     equalonsubsetsof!(lift, 1, 2, J)
@@ -116,7 +116,7 @@ function selfadhesivelift(h::EntropyCone{N, T}, J::EntropyIndex, I::EntropyIndex
     newn = nselfadh(h.n, J, I)
     K = setdiff(fullset(newn), fullset(h.n)) ∪ I
     cur = polymatroidcone(T, newn)
-    push!(cur, submodulareq(cur.n, fullset(h.n), K, I))
+    intersect!(cur, submodulareq(cur.n, fullset(h.n), K, I))
     lift = h * cur
     equalonsubsetsof!(lift, 1, 2, fullset(h.n))
     themap = Vector{Int}(h.n)

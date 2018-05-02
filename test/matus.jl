@@ -51,9 +51,9 @@
     G1 = polymatroidcone(5)
     G2 = polymatroidcone(5)
     G3 = polymatroidcone(5)
-    push!(G2, submodulareq(5, 5, 12, 34))
-    #push!(G3, submodulareq(5, 5, 12, 34))
-    push!(G3, submodulareq(5, 5, 13, 24))
+    intersect!(G2, submodulareq(5, 5, 12, 34))
+    #intersect!(G3, submodulareq(5, 5, 12, 34))
+    intersect!(G3, submodulareq(5, 5, 13, 24))
     G = G1 * G2 * G3
     equalonsubsetsof!(G, 1, 2, 1234)
     equalonsubsetsof!(G, 1, 2, 345)

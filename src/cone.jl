@@ -50,14 +50,14 @@ function getextremerays(h::EntropyCone)
     [PrimalEntropy(ext.R[i,:]) for i in 1:size(ext.R, 1)]
 end
 
-function push!(H::AbstractEntropyCone{N}, h::AbstractDualEntropy{L, N}) where {L, N}
+function Base.intersect!(H::AbstractEntropyCone{N}, h::AbstractDualEntropy{L, N}) where {L, N}
     if H.n != h.n
         error("The dimension of the cone and entropy differ")
     end
-    push!(H.poly, hrep(h))
+    intersect!(H.poly, hrep(h))
 end
-function push!(H::EntropyCone{N}, h::Vector{<:DualEntropy{L, N}}) where {L, N}
-    push!(H.poly, hrep(h))
+function Base.intersect!(H::EntropyCone{N}, h::Vector{<:DualEntropy{L, N}}) where {L, N}
+    intersect!(H.poly, hrep(h))
 end
 
 function Base.intersect!(h::AbstractEntropyCone{N}, ine::HRepresentation{N}) where N
@@ -144,6 +144,6 @@ polymatroidcone(n::Integer, lib = nothing, minimal = true) = polymatroidcone(Int
 function tight!(h::EntropyCone)
     # FIXME it doesn't work if I do not specify the type
     # The type is DualEntropy{N, Int} with N unspecified :(
-    tightness = DualEntropy{Int(ntodim(h.n)), Int}[setequality(nondecreasing(h.n, setdiff(fullset(h.n), set(i)), set(i)), true) for i in 1:h.n]
-    push!(h, tightness)
+    tightness = DualEntropy{Int(ntodim(h.n)), Int}[setequality(nondecreasing(h.n, setdiff(fullset(h.n), set(i)), set(i))) for i in 1:h.n]
+    intersect!(h, tightness)
 end

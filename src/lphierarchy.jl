@@ -6,7 +6,7 @@ function enforceadhesivity(h::EntropyCone{N, ET}) where {N, ET<:Real}
             if setdiff(S, T) == S # no intersection
                 I = setdiff(setdiff(ntodim(h.n), S), T)
                 cur = copy(h)
-                push!(cur, submodulareq(cur.n, S, T, I))
+                intersect!(cur, submodulareq(cur.n, S, T, I))
                 lift *= cur
                 last += 1
                 equalonsubsetsof!(lift, 1, last, union(S, I))

@@ -87,9 +87,7 @@ DualEntropy{L, N}(n::Int, h::AbstractVector{T}, liftid::Int=1) where {L, N, T} =
 DualEntropy{L, N}(h::AbstractVector, liftid::Int=1) where {L, N} = DualEntropy{L, N}(dimton(N), h, liftid)
 DualEntropy{L}(h::AbstractVector{T}, liftid::Int=1) where {L, T} = DualEntropy{L, length(h)}(h, liftid)
 
-function setequality(h::DualEntropy, L::Bool)
-    DualEntropy{L}(h.n, h.h, h.liftid)
-end
+setequality(h::DualEntropy{false, N}) where N = DualEntropy{true, N}(h.n, h.h, h.liftid)
 
 #Base.convert{N, T}(::Type{HRepresentation{T}}, h::DualEntropy{N, T}) = Base.convert(HRepresentation{T}, [h])
 #Doesn't work
@@ -274,14 +272,14 @@ function Base.one(h::DualEntropy{L,N,T}) where {L, N, T}
     constdualentropy(h.n, one(T))
 end
 
-#Base.similar(h::EntropyVector) = EntropyVector(h.n)
-# Used by e.g. hcat
-Base.similar(h::PrimalEntropy, ::Type{T}, dims::Dims) where {T} = length(dims) == 1 ? PrimalEntropy{dims[1], T}(dimton(dims[1]), h.liftid) : Array{T}(dims...)
-Base.similar(h::DualEntropy, ::Type{T}, dims::Dims) where {T} = length(dims) == 1 ? DualEntropy{dims[1], T}(dimton(dims[1]), h.equality, h.liftid) : Array{T}(dims...)
-# Cheating here, I cannot deduce n just from dims so I use copy(h.n)
-Base.similar(h::PrimalEntropyLift, ::Type{T}, dims::Dims) where {T} = length(dims) == 1 ? PrimalEntropyLift{dims[1], T}(copy(h.n), h.liftid) : Array{T}(dims...)
-Base.similar(h::DualEntropyLift, ::Type{T}, dims::Dims) where {T} = length(dims) == 1 ? DualEntropyLift{dims[1], T}(copy(h.n), h.equality) : Array{T}(dims...)
-#Base.similar{T}(h::EntropyVector, ::Type{T}) = EntropyVector(h.n)
+# #Base.similar(h::EntropyVector) = EntropyVector(h.n)
+# # Used by e.g. hcat
+# Base.similar(h::PrimalEntropy, ::Type{T}, dims::Dims) where {T} = length(dims) == 1 ? PrimalEntropy{dims[1], T}(dimton(dims[1]), h.liftid) : Array{T}(dims...)
+# Base.similar(h::DualEntropy, ::Type{T}, dims::Dims) where {T} = length(dims) == 1 ? DualEntropy{dims[1], T}(dimton(dims[1]), h.equality, h.liftid) : Array{T}(dims...)
+# # Cheating here, I cannot deduce n just from dims so I use copy(h.n)
+# Base.similar(h::PrimalEntropyLift, ::Type{T}, dims::Dims) where {T} = length(dims) == 1 ? PrimalEntropyLift{dims[1], T}(copy(h.n), h.liftid) : Array{T}(dims...)
+# Base.similar(h::DualEntropyLift, ::Type{T}, dims::Dims) where {T} = length(dims) == 1 ? DualEntropyLift{dims[1], T}(copy(h.n), h.equality) : Array{T}(dims...)
+# #Base.similar{T}(h::EntropyVector, ::Type{T}) = EntropyVector(h.n)
 
 # Classical Entropy Inequalities
 function dualentropywith(n, pos, neg)
@@ -328,11 +326,7 @@ submodular(n, S::EntropyIndex, T::EntropyIndex) = submodular(n, S, T, S ∩ T)
 submodular(n, s::Signed, t::Signed, i::Signed) = submodular(n, set(s), set(t), set(i))
 submodular(n, s::Signed, t::Signed) = submodular(n, set(s), set(t))
 
-function submodulareq(n, S::EntropyIndex, T::EntropyIndex, I::EntropyIndex)
-    h = submodular(n, S, T, I)
-    h.equality = true
-    h
-end
+submodulareq(n, S::EntropyIndex, T::EntropyIndex, I::EntropyIndex) = setequality(submodular(n, S, T, I))
 submodulareq(n, S::EntropyIndex, T::EntropyIndex) = submodulareq(n, S, T, S ∩ T)
 submodulareq(n, s::Signed, t::Signed, i::Signed) = submodulareq(n, set(s), set(t), set(i))
 submodulareq(n, s::Signed, t::Signed) = submodulareq(n, set(s), set(t))

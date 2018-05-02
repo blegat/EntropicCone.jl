@@ -12,7 +12,7 @@ end
 
 function matuscsirmaztetra!(h::EntropyCone{15}, i, j, k, l, tetravertices::Matrix=[1 1 1;1 -1 -1; -1 1 -1; -1 -1 1]')
     tight!(h)
-    push!(h, -ingleton(i, j))
+    intersect!(h, -ingleton(i, j))
     # er = getextremerays(h)
     # name = ["r_1", "br_ij", "r_1^jl", "r_1^j", "r_1^jk", "r_2^k", "r_2^l", "r_3", "r_1^i", "r_1^il", "r_1^ik"]
     # println(length(er))
