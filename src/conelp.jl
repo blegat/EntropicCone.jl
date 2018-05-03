@@ -1,22 +1,22 @@
 using StructDualDynProg, CutPruners
 import MathProgBase.linprog
-export getSDDPLattice, appendtoSDDPLattice!, updatemaxncuts!
+export stochasticprogram, appendtoSDDPLattice!, updatemaxncuts!
 
 function MathProgBase.linprog(c::DualEntropy, h::EntropyCone, cut::DualEntropy)
     cuthrep = HalfSpace(cut.h, 1)
     MathProgBase.linprog(c.h, intersect(h.poly, cuthrep))
 end
 
-function getNLDS(c::DualEntropy, W, h, T, linset, solver, newcut::Symbol, cutman::AbstractCutPruningAlgo)
+function getNLDS(c::DualEntropy, W, h, T, linset, solver, newcut::Symbol, pruningalgo::AbstractCutPruningAlgo)
     K = [(:NonNeg, collect(setdiff(IntSet(1:size(W, 1)), linset))), (:Zero, collect(linset))]
     C = [(:NonNeg, collect(1:size(W, 2)))]
     #newcut = :InvalidateSolver
     #newcut = :AddImmediately
-    NLDS{Float64}(W, h, T, K, C, c.h, solver, cutman, newcut)
+    NLDS{Float64}(W, h, T, K, C, c.h, solver, pruningalgo, newcut)
 end
 
-function extractNLDS(c, h::EntropyConeLift, id, idp, solver, newcut, cutman::AbstractCutPruningAlgo)
-    hrep = MixedMatHRep(hrep(h.poly))
+function extractNLDS(c, h::EntropyConeLift, id, idp, solver, newcut, pruningalgo::AbstractCutPruningAlgo)
+    h = MixedMatHRep(hrep(h.poly))
     idx  = rangefor(h, id)
     idxp = rangefor(h, idp)
     # Aabs = abs(hrep.A)
@@ -39,9 +39,9 @@ function extractNLDS(c, h::EntropyConeLift, id, idp, solver, newcut, cutman::Abs
     #   end
     # end
     # getNLDS(c, W, h, T, newlinset, solver)
-    W = hrep.A[:,idx]
-    T = hrep.A[:,idxp]
-    getNLDS(c, W, hrep.b, T, hrep.linset, solver, newcut, cutman)
+    W = h.A[:,idx]
+    T = h.A[:,idxp]
+    getNLDS(c, W, h.b, T, h.linset, solver, newcut, pruningalgo)
 end
 
 function next_perm(arr)
@@ -66,18 +66,19 @@ function next_perm(arr)
     end
 end
 
-function addchildren!(node::SDDPNode{S}, n::Int, old::Bool, oldnodes, newnodes, solver, max_n::Int, newcut::Symbol, cutman::Vector) where S
-    children = Vector{SDDPNode{S}}()
-
+function addchildren!(sp::StructDualDynProg.StochasticProgram{S}, node::Int, n::Int, old::Bool, oldnodes, newnodes, solver, max_n::Int, newcut::Symbol, pruningalgo::Vector) where S
+    # the probability does not matter
+    # no optimality cut needed since only the root has an objective
+    proba = 0.0
     function addchild(J::EntropyIndex,K::EntropyIndex,adh::Symbol,T=speye(Int(ntodim(n))))
         if (n,J,K,adh) in keys(oldnodes)
             if !old
-                push!(children, oldnodes[(n,J,K,adh)])
-                push!(childT, T)
+                child = oldnodes[(n,J,K,adh)]
+                add_scenario_transition!(sp, node, child, proba, T)
             end
         else
-            push!(children, getSDDPNode(oldnodes, newnodes, n, J, K, adh, node, solver, max_n, newcut, cutman))
-            push!(childT, T)
+            child = getSDDPNode(sp, oldnodes, newnodes, n, J, K, adh, node, solver, max_n, newcut, pruningalgo)
+            add_scenario_transition!(sp, node, child, proba, T)
         end
     end
 
@@ -131,19 +132,9 @@ function addchildren!(node::SDDPNode{S}, n::Int, old::Bool, oldnodes, newnodes, 
             end
         end
     end
-    if !isempty(children)
-        # the probability does not matter
-        # no optimality cut needed since only the root has an objective
-        if old
-            totalnchild = length(children) + length(node.children)
-            appendchildren!(node, children, ones(totalnchild) / totalnchild, childT)
-        else
-            setchildren!(node, children, ones(length(children)) / length(children), :NoOptimalityCut, childT)
-        end
-    end
 end
 
-function getSDDPNode(oldnodes, newnodes, np, Jp, Kp, adhp, parent, solver, max_n, newcut, cutman)
+function StructDualDynProg.getSDDPNode(sp::StructDualDynProg.StochasticProgram, oldnodes, newnodes, np, Jp, Kp, adhp, parent, solver, max_n, newcut, pruningalgo)
     @assert !((np,Jp,Kp,adhp) in keys(oldnodes))
     if !((np,Jp,Kp,adhp) in keys(newnodes))
         n = nadh(np, Jp, Kp, adhp)
@@ -151,43 +142,48 @@ function getSDDPNode(oldnodes, newnodes, np, Jp, Kp, adhp, parent, solver, max_n
         h = EntropyCone{Int(ntodim(np)), Float64}(np)
         lift = adhesivelift(h, Jp, Kp, adhp)
         c = constdualentropy(n, 0)
-        nlds = extractNLDS(c, lift, 2, 1, solver, newcut, cutman[n])
-        newnode = SDDPNode(nlds, parent)
+        nlds = extractNLDS(c, lift, 2, 1, solver, newcut, pruningalgo[n])
+        newnodedata = NodeData(nlds, parent)
+        newnode = add_scenario_state!(sp, newnodedata)
+        # Only the root node has a non-zero objective so no need for optimality cuts
+        setcutgenerator!(sp, newnode, NoOptimalityCutGenerator())
         newnodes[(np,Jp,Kp,adhp)] = newnode
-        addchildren!(newnode, n, false, oldnodes, newnodes, solver, max_n, newcut, cutman)
+        addchildren!(sp, newnode, n, false, oldnodes, newnodes, solver, max_n, newcut, pruningalgo)
     end
     newnodes[(np,Jp,Kp,adhp)]
 end
 
-function getRootNode(c::DualEntropy, H::EntropyCone, cut::DualEntropy, newnodes, solver, max_n::Integer, newcut::Symbol, cutman::Vector)
-    cuthrep = MixedMatHRep(cut.h', [1])
-    hrep = MixedMatHRep(hrep(intersect(H.poly, cuthrep)))
-    W = sparse(hrep.A) # FIXME I shouldn't have to do sparse
-    h = sparsevec(hrep.b) # FIXME I shouldn't have to do sparse
+function fillroot!(sp::StructDualDynProg.StochasticProgram, c::DualEntropy, H::EntropyCone, cut::DualEntropy, newnodes, solver, max_n::Integer, newcut::Symbol, pruningalgo::Vector)
+    cuthrep = hrep(cut.h', [1])
+    h = MixedMatHRep(hrep(intersect(H.poly, cuthrep)))
+    W = sparse(h.A) # FIXME I shouldn't have to do sparse
+    h = sparsevec(h.b) # FIXME I shouldn't have to do sparse
     T = spzeros(Float64, length(h), 0)
     nlds = getNLDS(c, W, h, T, hrep.linset, solver, newcut, AvgCutManager(-1))
-    root = SDDPNode(nlds, nothing)
+    rootdata = NodeData(nlds, 0)
+    root = add_scenario_state!(sp, rootdata)
+    setcutgenerator!(sp, root, NoOptimalityCutGenerator())
     newnodes[(H.n,emptyset(),emptyset(),:NoAdh)] = root
-    oldnodes = Dict{Tuple{Int,EntropyIndex,EntropyIndex,Symbol},SDDPNode{Float64}}()
-    addchildren!(root, H.n, false, oldnodes, newnodes, solver, max_n, newcut, cutman)
-    root
+    oldnodes = Dict{Tuple{Int,EntropyIndex,EntropyIndex,Symbol},Int}()
+    addchildren!(sp, root, H.n, false, oldnodes, newnodes, solver, max_n, newcut, pruningalgo)
 end
 
-function getSDDPLattice(c::DualEntropy, h::EntropyCone, solver, max_n, cut::DualEntropy, newcut::Symbol, cutman::Vector)
+function StructDualDynProg.stochasticprogram(c::DualEntropy, h::EntropyCone, solver, max_n, cut::DualEntropy, newcut::Symbol, pruningalgo::Vector)
     # allnodes[n][J][K]: if K ⊆ J, it is self-adhesivity, otherwise it is inner-adhesivity
-    allnodes = Dict{Tuple{Int,EntropyIndex,EntropyIndex,Symbol},SDDPNode{Float64}}()
-    @time root = getRootNode(c, h, cut, allnodes, solver, max_n, newcut, cutman)
-    root, allnodes
+    allnodes = Dict{Tuple{Int,EntropyIndex,EntropyIndex,Symbol},Int}()
+    sp = StructDualDynProg.StochasticProgram{Float64}()
+    @time fillroot!(sp, c, h, cut, allnodes, solver, max_n, newcut, pruningalgo)
+    sp, allnodes
 end
-function appendtoSDDPLattice!(oldnodes, solver, max_n, newcut, cutman::Vector)
-    newnodes = Dict{Tuple{Int,EntropyIndex,EntropyIndex,Symbol},SDDPNode{Float64}}()
+function Base.append!(sp::StructDualDynProg.StochasticProgram, oldnodes, solver, max_n, newcut, pruningalgo::Vector)
+    newnodes = Dict{Tuple{Int,EntropyIndex,EntropyIndex,Symbol},Int}()
     for ((n,J,K,adh), node) in oldnodes
-        addchildren!(node, nadh(n,J,K,adh), true, oldnodes, newnodes, solver, max_n, newcut, cutman)
+        addchildren!(sp, node, nadh(n,J,K,adh), true, oldnodes, newnodes, solver, max_n, newcut, pruningalgo)
     end
     merge!(oldnodes, newnodes)
 end
-function updatemaxncuts!(allnodes, maxncuts::Vector{Int})
+function updatemaxncuts!(sp::StructDualDynProg.StochasticProgram, allnodes, maxncuts::Vector{Int})
     for ((n,J,K,adh), node) in allnodes
-        StructDualDynProg.updatemaxncuts!(node.nlds, maxncuts[nadh(n,J,K,adh)])
+        StructDualDynProg.updatemaxncuts!(nodedata(sp, node).nlds, maxncuts[nadh(n,J,K,adh)])
     end
 end
