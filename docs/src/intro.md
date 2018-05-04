@@ -1,6 +1,6 @@
 # Introduction
 
-# The definition of entropy
+## The definition of entropy
 
 In 1948, Shannon published "A Mathematical Theory of Communication" [Sha48].
 In this paper, Shannon introduces the entropy of a random variable.
@@ -25,7 +25,7 @@ Given a ``n`` random variables, we can compute the entropy of any of the ``2^n``
 The entropic vector of a set of ``n`` random variables is a vector ``h``, indexed by the subsets of ``[n] = \{1, \ldots, n\}``,
 such that ``h_S = H_b(\{\, X_i \mid i \in S\,\})``.
 
-# The entropic cone
+## The entropic cone
 
 The *entropic cone* of ``n`` variables is the set of vectors of ``\mathbb{R}^{2^n-1}`` that are entropic:
 ```math
