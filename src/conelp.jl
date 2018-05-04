@@ -155,12 +155,10 @@ end
 
 function fillroot!(sp::StructDualDynProg.StochasticProgram, c::DualEntropy, H::EntropyCone, cut::DualEntropy, newnodes, solver, max_n::Integer, newcut::Symbol, pruningalgo::Vector)
     h = MixedMatHRep(hrep(H.poly ∩ HalfSpace(cut.h, 1)))
-    W = h.A
-    h = h.b
-    @assert W isa AbstractSparseMatrix
-    @assert h isa AbstractSparseVector
+    @assert h.A isa AbstractSparseMatrix
     T = spzeros(Float64, length(h), 0)
-    nlds = getNLDS(c, W, h, T, hrep.linset, solver, newcut, AvgCutManager(-1))
+    hb = sparsevec(h.b) # FIXME it was done before but not sure it is useful as it the the rhs
+    nlds = getNLDS(c, h.A, hb, T, hrep.linset, solver, newcut, AvgCutManager(-1))
     rootdata = NodeData(nlds, 0)
     root = add_scenario_state!(sp, rootdata)
     setcutgenerator!(sp, root, NoOptimalityCutGenerator())
