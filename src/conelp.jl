@@ -1,5 +1,4 @@
 using StructDualDynProg, CutPruners
-import MathProgBase.linprog
 export stochasticprogram, appendtoSDDPLattice!, updatemaxncuts!
 
 function MathProgBase.linprog(c::DualEntropy, h::EntropyCone, cut::DualEntropy)
@@ -10,38 +9,16 @@ end
 function getNLDS(c::DualEntropy, W, h, T, linset, solver, newcut::Symbol, pruningalgo::AbstractCutPruningAlgo)
     K = [(:NonNeg, collect(setdiff(IntSet(1:size(W, 1)), linset))), (:Zero, collect(linset))]
     C = [(:NonNeg, collect(1:size(W, 2)))]
-    #newcut = :InvalidateSolver
-    #newcut = :AddImmediately
     NLDS{Float64}(W, h, T, K, C, c.h, solver, pruningalgo, newcut)
 end
 
 function extractNLDS(c, h::EntropyConeLift, id, idp, solver, newcut, pruningalgo::AbstractCutPruningAlgo)
-    h = MixedMatHRep(hrep(h.poly))
+    hr = MixedMatHRep(hrep(h.poly))
     idx  = rangefor(h, id)
     idxp = rangefor(h, idp)
-    # Aabs = abs(hrep.A)
-    # nz  = sum(Aabs[:,idx], 2)
-    # nzp = sum(Aabs[:,idxp], 2)
-    # nzo = sum(Aabs, 2) - nz - nzp
-    # #map(i -> nz[i] > 0 && nzo[i] == 0, 1:size(hrep.A, 1)) # TODO use this
-    # rows = map(i -> nz[i] > 0, 1:size(hrep.A, 1))
-    # W = hrep.A[rows,idx]
-    # T = hrep.A[rows,idxp]
-    # h = hrep.b[rows]
-    # newlinset = IntSet()
-    # cur = 0
-    # for i in 1:size(hrep.A, 1)
-    #   if rows[i]
-    #     cur += 1
-    #     if i in hrep.linset
-    #       push!(newlinset, cur)
-    #     end
-    #   end
-    # end
-    # getNLDS(c, W, h, T, newlinset, solver)
-    W = h.A[:,idx]
-    T = h.A[:,idxp]
-    getNLDS(c, W, h.b, T, h.linset, solver, newcut, pruningalgo)
+    W = hr.A[:,idx]
+    T = hr.A[:,idxp]
+    getNLDS(c, W, hr.b, T, hr.linset, solver, newcut, pruningalgo)
 end
 
 function next_perm(arr)
@@ -83,7 +60,7 @@ function addchildren!(sp::StructDualDynProg.StochasticProgram{S}, node::Int, n::
     end
 
     if true
-        childT = Vector{AbstractMatrix{S}}()
+        #childT = Vector{AbstractMatrix{S}}()
         dn = max_n - n
         N = Int(ntodim(n))
         for i in 1:n-1
@@ -108,7 +85,7 @@ function addchildren!(sp::StructDualDynProg.StochasticProgram{S}, node::Int, n::
             end
         end
     else
-        childT = nothing
+        #childT = nothing
         for adh in [:Self, :Inner]
             for J in indset(n)
                 for K in indset(n)
@@ -134,19 +111,23 @@ function addchildren!(sp::StructDualDynProg.StochasticProgram{S}, node::Int, n::
     end
 end
 
-function StructDualDynProg.getSDDPNode(sp::StructDualDynProg.StochasticProgram, oldnodes, newnodes, np, Jp, Kp, adhp, parent, solver, max_n, newcut, pruningalgo)
+function StructDualDynProg.getSDDPNode(sp::StructDualDynProg.StochasticProgram{S}, oldnodes, newnodes, np, Jp, Kp, adhp, parent, solver, max_n, newcut, pruningalgo::Vector) where S
     @assert !((np,Jp,Kp,adhp) in keys(oldnodes))
     if !((np,Jp,Kp,adhp) in keys(newnodes))
         n = nadh(np, Jp, Kp, adhp)
         #h = polymatroidcone(np)
-        h = EntropyCone{Int(ntodim(np)), Float64}(np)
+        # h is for the parent.
+        # We do not need the constraint of the parent so we want the full polyhedron with no constraint
+        Np = Int(ntodim(np))
+        fullpoly = polyhedron(hrep(HalfSpace{Np, S, SparseVector{S, Int}}[]))
+        h = EntropyCone{Np, S}(np, fullpoly)
         lift = adhesivelift(h, Jp, Kp, adhp)
         c = constdualentropy(n, 0)
         nlds = extractNLDS(c, lift, 2, 1, solver, newcut, pruningalgo[n])
-        newnodedata = NodeData(nlds, parent)
+        newnodedata = StructDualDynProg.NodeData(nlds, parent)
         newnode = add_scenario_state!(sp, newnodedata)
         # Only the root node has a non-zero objective so no need for optimality cuts
-        setcutgenerator!(sp, newnode, NoOptimalityCutGenerator())
+        StructDualDynProg.setcutgenerator!(sp, newnode, NoOptimalityCutGenerator())
         newnodes[(np,Jp,Kp,adhp)] = newnode
         addchildren!(sp, newnode, n, false, oldnodes, newnodes, solver, max_n, newcut, pruningalgo)
     end
@@ -156,12 +137,12 @@ end
 function fillroot!(sp::StructDualDynProg.StochasticProgram, c::DualEntropy, H::EntropyCone, cut::DualEntropy, newnodes, solver, max_n::Integer, newcut::Symbol, pruningalgo::Vector)
     h = MixedMatHRep(hrep(H.poly ∩ HalfSpace(cut.h, 1)))
     @assert h.A isa AbstractSparseMatrix
-    T = spzeros(Float64, length(h), 0)
+    T = spzeros(Float64, size(h.A, 1), 0)
     hb = sparsevec(h.b) # FIXME it was done before but not sure it is useful as it the the rhs
-    nlds = getNLDS(c, h.A, hb, T, hrep.linset, solver, newcut, AvgCutManager(-1))
-    rootdata = NodeData(nlds, 0)
+    nlds = getNLDS(c, h.A, hb, T, h.linset, solver, newcut, AvgCutPruningAlgo(-1))
+    rootdata = StructDualDynProg.NodeData(nlds, 0)
     root = add_scenario_state!(sp, rootdata)
-    setcutgenerator!(sp, root, NoOptimalityCutGenerator())
+    StructDualDynProg.setcutgenerator!(sp, root, NoOptimalityCutGenerator())
     newnodes[(H.n,emptyset(),emptyset(),:NoAdh)] = root
     oldnodes = Dict{Tuple{Int,EntropyIndex,EntropyIndex,Symbol},Int}()
     addchildren!(sp, root, H.n, false, oldnodes, newnodes, solver, max_n, newcut, pruningalgo)
