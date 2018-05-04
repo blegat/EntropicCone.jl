@@ -154,10 +154,11 @@ function StructDualDynProg.getSDDPNode(sp::StructDualDynProg.StochasticProgram, 
 end
 
 function fillroot!(sp::StructDualDynProg.StochasticProgram, c::DualEntropy, H::EntropyCone, cut::DualEntropy, newnodes, solver, max_n::Integer, newcut::Symbol, pruningalgo::Vector)
-    cuthrep = hrep(cut.h', [1])
-    h = MixedMatHRep(hrep(intersect(H.poly, cuthrep)))
-    W = sparse(h.A) # FIXME I shouldn't have to do sparse
-    h = sparsevec(h.b) # FIXME I shouldn't have to do sparse
+    h = MixedMatHRep(hrep(H.poly ∩ HalfSpace(cut.h, 1)))
+    W = h.A
+    h = h.b
+    @assert W isa AbstractSparseMatrix
+    @assert h isa AbstractSparseVector
     T = spzeros(Float64, length(h), 0)
     nlds = getNLDS(c, W, h, T, hrep.linset, solver, newcut, AvgCutManager(-1))
     rootdata = NodeData(nlds, 0)
