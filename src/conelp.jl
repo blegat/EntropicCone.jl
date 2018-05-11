@@ -111,6 +111,7 @@ function addchildren!(sp::StructDualDynProg.StochasticProgram{S}, node::Int, n::
     end
 end
 
+# np: n for parent
 function StructDualDynProg.getSDDPNode(sp::StructDualDynProg.StochasticProgram{S}, oldnodes, newnodes, np, Jp, Kp, adhp, parent, solver, max_n, newcut, pruningalgo::Vector) where S
     @assert !((np,Jp,Kp,adhp) in keys(oldnodes))
     if !((np,Jp,Kp,adhp) in keys(newnodes))
@@ -124,7 +125,7 @@ function StructDualDynProg.getSDDPNode(sp::StructDualDynProg.StochasticProgram{S
         lift = adhesivelift(h, Jp, Kp, adhp)
         c = constdualentropy(n, 0)
         nlds = extractNLDS(c, lift, 2, 1, solver, newcut, pruningalgo[n])
-        newnodedata = StructDualDynProg.NodeData(nlds, parent)
+        newnodedata = StructDualDynProg.NodeData(nlds, Np)
         newnode = add_scenario_state!(sp, newnodedata)
         # Only the root node has a non-zero objective so no need for optimality cuts
         StructDualDynProg.setcutgenerator!(sp, newnode, NoOptimalityCutGenerator())
