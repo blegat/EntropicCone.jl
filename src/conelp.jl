@@ -44,9 +44,8 @@ function next_perm(arr)
 end
 
 function addchildren!(sp::StructDualDynProg.StochasticProgram{S}, node::Int, n::Int, old::Bool, oldnodes, newnodes, solver, max_n::Int, newcut::Symbol, pruningalgo::Vector) where S
-    # the probability does not matter
-    # no optimality cut needed since only the root has an objective
-    proba = 0.0
+    proba = 0.0 # It will be set at once the number of children is known (i.e. at the end of the function)
+    transitions = []
     function addchild(J::EntropyIndex,K::EntropyIndex,adh::Symbol,T=speye(Int(ntodim(n))))
         if (n,J,K,adh) in keys(oldnodes)
             if !old
@@ -67,7 +66,7 @@ function addchildren!(sp::StructDualDynProg.StochasticProgram{S}, node::Int, n::
             for j in i+1:min(n, i+dn)
                 I = set(1:i)
                 J = set(1:j)
-                addchild(J,I,:Self)
+                push!(transitions, addchild(J,I,:Self))
                 σ = collect(1:n)
                 done = [(I,J)]
                 while next_perm(σ)
@@ -79,7 +78,7 @@ function addchildren!(sp::StructDualDynProg.StochasticProgram{S}, node::Int, n::
                         push!(done, (Iperm, Jperm))
                         # Why transpose ?
                         P = sparse(Vector{Int}(σi), 1:N, 1, N, N)'
-                        addchild(J,I,:Self,P)
+                        push!(transitions, addchild(J,I,:Self,P))
                     end
                 end
             end
@@ -103,11 +102,16 @@ function addchildren!(sp::StructDualDynProg.StochasticProgram{S}, node::Int, n::
                         continue
                     end
                     if nadh(n, J, K, adh) <= max_n
-                        addchild(J,K,adh)
+                        push!(transitions, addchild(J,K,adh))
                     end
                 end
             end
         end
+    end
+    # no optimality cut needed since only the root has an objective
+    # so the probably only influence sampling hence equal probability is a fair choice
+    for tr in transitions
+        StructDualDynProg.setprobability!(sp, tr, 1 / length(transitions))
     end
 end
 
