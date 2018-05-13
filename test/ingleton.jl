@@ -1,31 +1,18 @@
 c = ingleton(4,1,2,3,4)
 cut = nonnegative(4, 1234)
-using Gurobi
-solver = Gurobi.GurobiSolver(OutputFlag=0)
-#using Clp
-#solver = Clp.ClpSolver()
+using CutPruners
 n = 4
 h = polymatroidcone(Float64, 4)
 newcut = :AddImmediately
-#(root, allnodes) = getSDDPLattice(c, h, solver, 5, cut, newcut, [-1,-1,-1,-1,-1])
-(root, allnodes) = getSDDPLattice(c, h, solver, 7, cut, newcut, [-1,-1,-1,-1,-1,-1,-1])
-#StochasticDualDynamicProgramming.SDDP(root, 2, :All, 1)
-#appendtoSDDPLattice!(allnodes, solver, 6, newcut, [-1,-1,-1,-1,-1,-1])
-#StochasticDualDynamicProgramming.SDDP(root, 3, :All, 1)
-#appendtoSDDPLattice!(allnodes, solver, 7, newcut, [-1,-1,-1,-1,-1,-1,-1])
-#maxncuts = 512
-#updatemaxncuts!(allnodes, [-1,-1,-1,-1,maxncuts,maxncuts,maxncuts])
-StochasticDualDynamicProgramming.SDDP(root, 3, 12, 2, (nit,objval) -> objval > -0.15854 || nit > 5, :Proba)
-#StochasticDualDynamicProgramming.SDDP(root, 4, 512, 2, (nit,objval) -> objval > -0.1579, :Proba)
-for (key,node) in allnodes
-  if isnull(node.nlds.cuts_de)
-    println("Not loaded $key")
-  end
-end
-(root, allnodes) = getSDDPLattice(c, h, solver, 7, cut, newcut, [-1,-1,-1,-1,-1,-1,-1])
-StochasticDualDynamicProgramming.SDDP(root, 3, 12, 2, (nit,objval) -> objval > -0.15854 || nit > 5, :nPaths)
-for (key,node) in allnodes
-  if isnull(node.nlds.cuts_de)
-    println("Not loaded $key")
-  end
+
+@testset "Ingleton score" begin
+    @testset "n = $n, m = $m, nits=$nits, objval=$objval" for (n, m, nnodes, nits, objval) in ((4, 1, 1, 1, -1/4), # Shannon cone without any adhesivity
+                                                                                               (5, 1, 4, 1, -1/4), # Adhesivity adding up to n=5 but paths of length m=1 so they are not encountered
+                                                                                               (5, 2, 4, 2, -1/6)) # n=5, m=2 so they are encountered and we have 6 new cuts that improves the Ingleton bound to -1/6
+        (sp, allnodes) = stochasticprogram(c, h, lp_solver, n, cut, newcut, AvgCutPruningAlgo.([-1,-1,-1,-1,-1,-1,-1]))
+        sol = StructDualDynProg.SDDP(sp, m, stopcrit=StructDualDynProg.IterLimit(nits), K=-1)
+        @test length(allnodes) == nnodes
+        @test sol.status == :Optimal
+        @test sol.objval ≈ objval
+    end
 end

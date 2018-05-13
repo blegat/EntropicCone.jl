@@ -157,7 +157,7 @@ function StructDualDynProg.stochasticprogram(c::DualEntropy, h::EntropyCone, sol
     # allnodes[n][J][K]: if K ⊆ J, it is self-adhesivity, otherwise it is inner-adhesivity
     allnodes = Dict{Tuple{Int,EntropyIndex,EntropyIndex,Symbol},Int}()
     sp = StructDualDynProg.StochasticProgram{Float64}()
-    @time fillroot!(sp, c, h, cut, allnodes, solver, max_n, newcut, pruningalgo)
+    fillroot!(sp, c, h, cut, allnodes, solver, max_n, newcut, pruningalgo)
     sp, allnodes
 end
 function Base.append!(sp::StructDualDynProg.StochasticProgram, oldnodes, solver, max_n, newcut, pruningalgo::Vector)
