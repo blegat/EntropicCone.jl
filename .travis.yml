@@ -10,6 +10,7 @@ notifications:
 before_script:
   - julia -e 'Pkg.clone("https://github.com/blegat/StructDualDynProg.jl.git")'
   - julia -e 'Pkg.clone("https://github.com/JuliaPolyhedra/Polyhedra.jl.git")'
+  - julia -e 'Pkg.clone("https://github.com/JuliaPolyhedra/CutPruners.jl.git")'
 after_success:
   # push coverage results to Codecov
   - julia -e 'cd(Pkg.dir("EntropicCone")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'
