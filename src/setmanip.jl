@@ -53,7 +53,10 @@ end
 """
     set(i::Integer)
 
-Return the set of digits of the integer `i`.
+Return the set of digits of the integer `i`. Note that this cannot create a set
+with elements other than 1, 2, 3, 4, 5, 6, 7, 8 and 9. For instance, the set
+``{2, 4, 10}`` cannot be constructed with this method, use `set([2, 4, 10])`
+instead.
 
 ## Examples
 
