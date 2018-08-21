@@ -50,6 +50,15 @@ function fullset(n::Integer)
     (EntropyIndex(1) << n) - EntropyIndex(1)
 end
 
+"""
+    set(i::Integer)
+
+Return the set of digits of the integer `i`.
+
+## Examples
+
+To create the set ``\\{2, 4\\}``, use `set(24)` or `set(42)`.
+"""
 function set(i::Integer)
     ret = emptyset()
     while i > 0
@@ -58,14 +67,23 @@ function set(i::Integer)
     end
     ret
 end
-function set(I::AbstractArray{S}) where S<:Integer
+
+"""
+    set(I::AbstractArray{<:Integer})
+
+Return the set of elements of `I`.
+
+## Examples
+
+To create the set ``\\{2, 4\\}``, use `set([2, 4])` or `set([4, 2])`.
+"""
+function set(I::AbstractArray{<:Integer})
     ret = emptyset()
     for i in I
         ret = union(ret, singleton(i))
     end
     ret
 end
-
 
 function myin(i::Signed, I::EntropyIndex)
     (singleton(i) & I) != 0

@@ -4,6 +4,6 @@
 
 ## Contents
 ```@contents
-Pages = ["intro.md"]
+Pages = ["intro.md", "vector.md"]
 Depth = 2
 ```
