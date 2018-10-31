@@ -1,7 +1,7 @@
 var documenterSearchIndex = {"docs": [
 
 {
-    "location": "index.html#",
+    "location": "#",
     "page": "Index",
     "title": "Index",
     "category": "page",
@@ -9,7 +9,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "index.html#SumOfSquares-–-Entropic-Cone-1",
+    "location": "#SumOfSquares-–-Entropic-Cone-1",
     "page": "Index",
     "title": "SumOfSquares –- Entropic Cone",
     "category": "section",
@@ -17,15 +17,15 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "index.html#Contents-1",
+    "location": "#Contents-1",
     "page": "Index",
     "title": "Contents",
     "category": "section",
-    "text": "Pages = [\"intro.md\"]\nDepth = 2"
+    "text": "Pages = [\"intro.md\", \"vector.md\"]\nDepth = 2"
 },
 
 {
-    "location": "intro.html#",
+    "location": "intro/#",
     "page": "Introduction",
     "title": "Introduction",
     "category": "page",
@@ -33,7 +33,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "intro.html#Introduction-1",
+    "location": "intro/#Introduction-1",
     "page": "Introduction",
     "title": "Introduction",
     "category": "section",
@@ -41,7 +41,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "intro.html#The-definition-of-entropy-1",
+    "location": "intro/#The-definition-of-entropy-1",
     "page": "Introduction",
     "title": "The definition of entropy",
     "category": "section",
@@ -49,11 +49,43 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "intro.html#The-entropic-cone-1",
+    "location": "intro/#The-entropic-cone-1",
     "page": "Introduction",
     "title": "The entropic cone",
     "category": "section",
     "text": "The entropic cone of n variables is the set of vectors of mathbbR^2^n-1 that are entropic:mathcalH_n =  h in mathbbR^2^n-1 mid exists X_1 ldots X_n forall emptyset neq S subseteq n h_S = H_b( X_i mid i in S) We do not include the dimension corresponding to the entropy of the empty set as it is zero to make the cone mathcalH_n solid, i.e. full-dimensional.[Sha48] Claude Elwood Shannon. A mathematical theory of communication. Bell System Technical Journal, 27:379–423 and 623–656, July and October 1948."
+},
+
+{
+    "location": "vector/#",
+    "page": "Entropic Vector",
+    "title": "Entropic Vector",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "vector/#Entropic-Vector-1",
+    "page": "Entropic Vector",
+    "title": "Entropic Vector",
+    "category": "section",
+    "text": ""
+},
+
+{
+    "location": "vector/#EntropicCone.set",
+    "page": "Entropic Vector",
+    "title": "EntropicCone.set",
+    "category": "function",
+    "text": "set(i::Integer)\n\nReturn the set of digits of the integer i. Note that this cannot create a set with elements other than 1, 2, 3, 4, 5, 6, 7, 8 and 9. For instance, the set 2 4 10 cannot be constructed with this method, use set([2, 4, 10]) instead.\n\nExamples\n\nTo create the set 2 4, use set(24) or set(42).\n\n\n\n\n\nset(I::AbstractArray{<:Integer})\n\nReturn the set of elements of I.\n\nExamples\n\nTo create the set 2 4, use set([2, 4]) or set([4, 2]).\n\n\n\n\n\n"
+},
+
+{
+    "location": "vector/#Entropic-Index-1",
+    "page": "Entropic Vector",
+    "title": "Entropic Index",
+    "category": "section",
+    "text": "The index of an entropic vector of n variables is a subset of the set n = 1 2 ldots n. This set is used to index the entropic vector. A set can be created using the set function.set"
 },
 
 ]}
