@@ -2,33 +2,33 @@ import Polyhedra.polyhedron
 # Fullin also provides a certificate so it is interesting so it is exported
 export getextremerays, fullin
 
-function unlift(h::EntropyConeLift{N}) where N
+function unlift(h::EntropyConeLift)
     poly = getpoly(h)
-    EntropyCone(eliminate(poly, [(ntodim(h.n[1])+1):N]))
+    EntropyCone(eliminate(poly, [(ntodim(h.n[1])+1):Polyhedra.fulldim(h)]))
 end
 
-function fullin(h::AbstractPrimalEntropy{N}, H::AbstractEntropyCone{N}) where N
+function fullin(h::AbstractPrimalEntropy, H::AbstractEntropyCone)
     Ray(h.h) in H.poly
     #reducedim(&, (H.A*h.h) .>= 0, true)[1]
 end
-function partialin(h::AbstractPrimalEntropy{NE, S}, H::AbstractEntropyCone{NC, T}) where {NE, NC, S, T}
-    hps = HyperPlane{NC, T, SparseVector{T, Int}}[]
+function partialin(h::AbstractPrimalEntropy{S}, H::AbstractEntropyCone{T}) where {S, T}
+    hps = HyperPlane{T, SparseVector{T, Int}}[]
     offseth = 0
     offsetsH = [0; cumsum(map(ntodim, H.n))]
     for i in eachindex(collect(h.n)) # use of collect in case h.n is scalar
         for j in indset(h, i)
             col = offsetsH[h.liftid[i]]+j
-            push!(hps, HyperPlane(sparsevec([col], [one(T)], NC), T(h.h[offseth+j])))
+            push!(hps, HyperPlane(sparsevec([col], [one(T)], Polyhedra.fulldim(H)), T(h.h[offseth+j])))
         end
         offseth += ntodim(h.n[i])
     end
     !isempty(H.poly ∩ hrep(hps))
 end
 
-function Base.in(h::PrimalEntropy{NE}, H::EntropyCone{NC}) where {NE, NC}
-    if NE > NC
+function Base.in(h::PrimalEntropy, H::EntropyCone)
+    if Polyhedra.fulldim(h) > Polyhedra.fulldim(H)
         error("The vector has a higher dimension than the cone")
-    elseif NE == NC
+    elseif Polyhedra.fulldim(h) == Polyhedra.fulldim(H)
         fullin(h, H)[1]
     else
         partialin(h, H)
@@ -55,7 +55,7 @@ function Base.in(h::PrimalEntropy, H::EntropyConeLift)
     end
 end
 
-#function redundant(h::AbstractDualEntropy{L, N, S}, H::AbstractEntropyCone{N, T}) where {L, N, S, T}
+#function redundant(h::AbstractDualEntropy{L, S}, H::AbstractEntropyCone{T}) where {L, S, T}
 #    (isin, certificate, vertex) = ishredundant(H.poly, HRepElement(h))
 #    (isin, certificate, vertex)
 #end

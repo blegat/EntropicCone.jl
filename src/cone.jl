@@ -1,32 +1,31 @@
 import Polyhedra.fulldim
-export EntropyCone, polymatroidcone, redundant, getinequalities, getextremerays, tight!, fulldim
+export EntropyCone, polymatroidcone, redundant, getinequalities, getextremerays, tight!
 
 # Entropy Cone
 
-abstract type AbstractEntropyCone{N, T<:Real} end
+abstract type AbstractEntropyCone{T<:Real} end
 
-Polyhedra.fulldim(h::AbstractEntropyCone{N}) where N = N
+Polyhedra.fulldim(h::AbstractEntropyCone) = Polyhedra.fulldim(h.poly)
 
-mutable struct EntropyCone{N, T<:Real} <: AbstractEntropyCone{N, T}
+mutable struct EntropyCone{T<:Real} <: AbstractEntropyCone{T}
     n::Int
-    poly::Polyhedron{N, T}
+    poly::Polyhedron{T}
 
-    function EntropyCone{N, T}(n::Int, p::Polyhedron{N, T}) where {N, T}
-        if ntodim(n) != N
+    function EntropyCone{T}(n::Int, p::Polyhedron{T}) where T
+        if ntodim(n) != Polyhedra.fulldim(p)
             error("The number of variables does not match the dimension of the polyhedron")
         end
-        new{N, T}(n, p)
+        new{T}(n, p)
     end
 end
-EntropyCone{N, T}(p::Polyhedron{N, T}) where {N, T} = EntropyCone{N, T}(dimton(N), p)
-EntropyCone(n::Int, p::Polyhedron{N, T}) where {N, T} = EntropyCone{N, T}(n, p)
+EntropyCone(n::Int, p::Polyhedron{T}) where {T} = EntropyCone{T}(n, p)
 
-#EntropyCone{T<:AbstractFloat}(n::Int, A::AbstractMatrix{T}) = EntropyCone{size(A, 2), Float64}(n, AbstractMatrix{Float64}(A), IntSet([]))
-#EntropyCone{T<:Real}(n::Int, A::AbstractMatrix{T}) = EntropyCone{size(A, 2), Rational{BigInt}}(n, AbstractMatrix{Rational{BigInt}}(A), IntSet())
+#EntropyCone{T<:AbstractFloat}(n::Int, A::AbstractMatrix{T}) = EntropyCone{size(A, 2), Float64}(n, AbstractMatrix{Float64}(A), BitSet([]))
+#EntropyCone{T<:Real}(n::Int, A::AbstractMatrix{T}) = EntropyCone{size(A, 2), Rational{BigInt}}(n, AbstractMatrix{Rational{BigInt}}(A), BitSet())
 
 #Base.getindex{T<:Real}(H::EntropyCone{T}, i) = DualEntropy(H.n, H.A[i,:], i in H.equalities) # FIXME
 
-Base.copy(h::EntropyCone{N, T}) where {N, T<:Real} = EntropyCone{N, T}(h.n, copy(h.poly))
+Base.copy(h::EntropyCone{T}) where {T<:Real} = EntropyCone{T}(h.n, copy(h.poly))
 
 function indset(h::EntropyCone)
     indset(h.n)
@@ -50,21 +49,20 @@ function getextremerays(h::EntropyCone)
     [PrimalEntropy(ext.R[i,:]) for i in 1:size(ext.R, 1)]
 end
 
-function Base.intersect!(H::AbstractEntropyCone{N}, h::AbstractDualEntropy{L, N}) where {L, N}
+function Base.intersect!(H::AbstractEntropyCone, h::AbstractDualEntropy{L}) where {L}
+    @assert Polyhedra.fulldim(H) == Polyhedra.fulldim(h)
     if H.n != h.n
         error("The dimension of the cone and entropy differ")
     end
     intersect!(H.poly, hrep(h))
 end
-function Base.intersect!(H::EntropyCone{N}, h::Vector{<:DualEntropy{L, N}}) where {L, N}
-    intersect!(H.poly, hrep(h))
+function Base.intersect!(H::EntropyCone, hs::Vector{<:DualEntropy{L}}) where {L}
+    @assert all(Polyhedra.fulldim(H) == Polyhedra.fulldim(h) for h in hs)
+    intersect!(H.poly, hrep(hs))
 end
 
-function Base.intersect!(h::AbstractEntropyCone{N}, ine::HRepresentation{N}) where N
-    if N != size(ine.A, 2)
-        error("The dimension for the cone and the HRepresentation differ")
-    end
-    h.poly = intersect(h.poly, ine)
+function Base.intersect!(h::AbstractEntropyCone, hr::HRepresentation)
+    h.poly = intersect(h.poly, hr)
 end
 function Base.intersect!(h1::AbstractEntropyCone, h2::AbstractEntropyCone)
     if h1.n != h2.n
@@ -100,8 +98,8 @@ function polymatroidcone(::Type{T}, n::Integer, lib = nothing, minimal = true) w
     cur_nonnegative   = 1
     cur_nondecreasing = 1
     cur_submodular    = 1
-    HT = HalfSpace{Int64(ntodim(n)), T, SparseVector{T, Int}}
-    hss = Vector{HT}(n_nonnegative + n_nondecreasing + n_submodular)
+    HT = HalfSpace{T, SparseVector{T, Int}}
+    hss = Vector{HT}(undef, n_nonnegative + n_nondecreasing + n_submodular)
     for j = 1:n
         for k = (j+1):n
             hss[offset_submodular+cur_submodular] = HRepElement(submodular(n, set(j), set(k)))
@@ -142,8 +140,6 @@ end
 polymatroidcone(n::Integer, lib = nothing, minimal = true) = polymatroidcone(Int, n, lib, minimal)
 
 function tight!(h::EntropyCone)
-    # FIXME it doesn't work if I do not specify the type
-    # The type is DualEntropy{N, Int} with N unspecified :(
-    tightness = DualEntropy{Int(ntodim(h.n)), Int}[setequality(nondecreasing(h.n, setdiff(fullset(h.n), set(i)), set(i))) for i in 1:h.n]
+    tightness = DualEntropy{Int}[setequality(nondecreasing(h.n, setdiff(fullset(h.n), set(i)), set(i))) for i in 1:h.n]
     intersect!(h, tightness)
 end

@@ -1,8 +1,10 @@
 using Documenter, EntropicCone
 
 makedocs(
-    format = :html,
     sitename = "EntropicCone",
+    # See https://github.com/JuliaDocs/Documenter.jl/issues/868
+    # Remove for Documenter v0.21
+    html_prettyurls = get(ENV, "CI", nothing) == "true",
     pages = [
         "Index" => "index.md",
         "Introduction" => "intro.md",
@@ -15,9 +17,4 @@ makedocs(
 
 deploydocs(
     repo   = "github.com/blegat/EntropicCone.jl.git",
-    target = "build",
-    osname = "linux",
-    julia  = "0.6",
-    deps   = nothing,
-    make   = nothing
 )

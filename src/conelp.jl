@@ -1,5 +1,5 @@
 using StructDualDynProg, CutPruners
-export stochasticprogram, appendtoSDDPLattice!, updatemaxncuts!
+export appendtoSDDPLattice!, updatemaxncuts!
 
 function MathProgBase.linprog(c::DualEntropy, h::EntropyCone, cut::DualEntropy)
     cuthrep = HalfSpace(cut.h, 1)
@@ -7,7 +7,7 @@ function MathProgBase.linprog(c::DualEntropy, h::EntropyCone, cut::DualEntropy)
 end
 
 function getNLDS(c::DualEntropy, W, h, T, linset, solver, newcut::Symbol, pruningalgo::AbstractCutPruningAlgo)
-    K = [(:NonNeg, collect(setdiff(IntSet(1:size(W, 1)), linset))), (:Zero, collect(linset))]
+    K = [(:NonNeg, collect(setdiff(BitSet(1:size(W, 1)), linset))), (:Zero, collect(linset))]
     C = [(:NonNeg, collect(1:size(W, 2)))]
     NLDS{Float64}(W, h, T, K, C, c.h, solver, pruningalgo, newcut)
 end
@@ -43,7 +43,7 @@ function next_perm(arr)
     end
 end
 
-function addchildren!(sp::StructDualDynProg.StochasticProgram{S}, node::Int, n::Int, old::Bool, oldnodes, newnodes, solver, max_n::Int, newcut::Symbol, pruningalgo::Vector) where S
+function addchildren!(sp::StructDualDynProg.StructProg.StochasticProgram{S}, node::Int, n::Int, old::Bool, oldnodes, newnodes, solver, max_n::Int, newcut::Symbol, pruningalgo::Vector) where S
     proba = 0.0 # It will be set at once the number of children is known (i.e. at the end of the function)
     transitions = []
     function addchild(J::EntropyIndex,K::EntropyIndex,adh::Symbol,T=speye(Int(ntodim(n))))
@@ -53,7 +53,7 @@ function addchildren!(sp::StructDualDynProg.StochasticProgram{S}, node::Int, n::
                 add_scenario_transition!(sp, node, child, proba, T)
             end
         else
-            child = getSDDPNode(sp, oldnodes, newnodes, n, J, K, adh, node, solver, max_n, newcut, pruningalgo)
+            child = create_node(sp, oldnodes, newnodes, n, J, K, adh, node, solver, max_n, newcut, pruningalgo)
             add_scenario_transition!(sp, node, child, proba, T)
         end
     end
@@ -116,7 +116,7 @@ function addchildren!(sp::StructDualDynProg.StochasticProgram{S}, node::Int, n::
 end
 
 # np: n for parent
-function StructDualDynProg.getSDDPNode(sp::StructDualDynProg.StochasticProgram{S}, oldnodes, newnodes, np, Jp, Kp, adhp, parent, solver, max_n, newcut, pruningalgo::Vector) where S
+function create_node(sp::StructDualDynProg.StructProg.StochasticProgram{S}, oldnodes, newnodes, np, Jp, Kp, adhp, parent, solver, max_n, newcut, pruningalgo::Vector) where S
     @assert !((np,Jp,Kp,adhp) in keys(oldnodes))
     if !((np,Jp,Kp,adhp) in keys(newnodes))
         n = nadh(np, Jp, Kp, adhp)
@@ -139,7 +139,7 @@ function StructDualDynProg.getSDDPNode(sp::StructDualDynProg.StochasticProgram{S
     newnodes[(np,Jp,Kp,adhp)]
 end
 
-function fillroot!(sp::StructDualDynProg.StochasticProgram, c::DualEntropy, H::EntropyCone, cut::DualEntropy, newnodes, solver, max_n::Integer, newcut::Symbol, pruningalgo::Vector)
+function fillroot!(sp::StructDualDynProg.StructProg.StochasticProgram, c::DualEntropy, H::EntropyCone, cut::DualEntropy, newnodes, solver, max_n::Integer, newcut::Symbol, pruningalgo::Vector)
     h = MixedMatHRep(hrep(H.poly ∩ HalfSpace(cut.h, 1)))
     @assert h.A isa AbstractSparseMatrix
     T = spzeros(Float64, size(h.A, 1), 0)
@@ -153,21 +153,21 @@ function fillroot!(sp::StructDualDynProg.StochasticProgram, c::DualEntropy, H::E
     addchildren!(sp, root, H.n, false, oldnodes, newnodes, solver, max_n, newcut, pruningalgo)
 end
 
-function StructDualDynProg.stochasticprogram(c::DualEntropy, h::EntropyCone, solver, max_n, cut::DualEntropy, newcut::Symbol, pruningalgo::Vector)
+function StructDualDynProg.SOI.stochasticprogram(num_stages::Int, c::DualEntropy, h::EntropyCone, solver, max_n, cut::DualEntropy, newcut::Symbol, pruningalgo::Vector)
     # allnodes[n][J][K]: if K ⊆ J, it is self-adhesivity, otherwise it is inner-adhesivity
     allnodes = Dict{Tuple{Int,EntropyIndex,EntropyIndex,Symbol},Int}()
-    sp = StructDualDynProg.StochasticProgram{Float64}()
+    sp = StructDualDynProg.StructProg.StochasticProgram{Float64}(num_stages)
     fillroot!(sp, c, h, cut, allnodes, solver, max_n, newcut, pruningalgo)
     sp, allnodes
 end
-function Base.append!(sp::StructDualDynProg.StochasticProgram, oldnodes, solver, max_n, newcut, pruningalgo::Vector)
+function Base.append!(sp::StructDualDynProg.StructProg.StochasticProgram, oldnodes, solver, max_n, newcut, pruningalgo::Vector)
     newnodes = Dict{Tuple{Int,EntropyIndex,EntropyIndex,Symbol},Int}()
     for ((n,J,K,adh), node) in oldnodes
         addchildren!(sp, node, nadh(n,J,K,adh), true, oldnodes, newnodes, solver, max_n, newcut, pruningalgo)
     end
     merge!(oldnodes, newnodes)
 end
-function updatemaxncuts!(sp::StructDualDynProg.StochasticProgram, allnodes, maxncuts::Vector{Int})
+function updatemaxncuts!(sp::StructDualDynProg.StructProg.StochasticProgram, allnodes, maxncuts::Vector{Int})
     for ((n,J,K,adh), node) in allnodes
         StructDualDynProg.updatemaxncuts!(nodedata(sp, node).nlds, maxncuts[nadh(n,J,K,adh)])
     end

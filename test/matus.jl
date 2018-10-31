@@ -42,9 +42,9 @@
         h
     end
 
-    G1 = polymatroidcone(5, SimplePolyhedraLibrary{Float64}(lp_solver))
-    G2 = polymatroidcone(5, SimplePolyhedraLibrary{Float64}(lp_solver))
-    G3 = polymatroidcone(5, SimplePolyhedraLibrary{Float64}(lp_solver))
+    G1 = polymatroidcone(5, Polyhedra.DefaultLibrary{Float64}(lp_solver))
+    G2 = polymatroidcone(5, Polyhedra.DefaultLibrary{Float64}(lp_solver))
+    G3 = polymatroidcone(5, Polyhedra.DefaultLibrary{Float64}(lp_solver))
     intersect!(G2, submodulareq(5, 5, 12, 34))
     #intersect!(G3, submodulareq(5, 5, 12, 34))
     intersect!(G3, submodulareq(5, 5, 13, 24))

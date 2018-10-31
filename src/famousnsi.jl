@@ -21,7 +21,7 @@ zhangyeunginequality() = zhangyeunginequality(1, 2, 3, 4)
 #   submodular(4,2,4,3) + submodular(4, 3,4,2)
 # end
 function checkalldifferent(x)
-    s = IntSet()
+    s = BitSet()
     for i in x
         push!(s, i)
     end

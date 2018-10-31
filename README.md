@@ -3,7 +3,7 @@
 | **Documentation** | **Build Status** |
 |:-----------------:|:----------------:|
 | [![][docs-stable-img]][docs-stable-url] | [![Build Status][build-img]][build-url] |
-| [![][docs-latest-img]][docs-latest-url] | [![Codecov branch][codecov-img]][codecov-url] |
+| [![][docs-dev-img]][docs-dev-url]       | [![Codecov branch][codecov-img]][codecov-url] |
 
 Package for approximating the Entropic Cone and solving optimization problems on it.
 
@@ -25,9 +25,9 @@ To cite this package, use
 ```
 
 [docs-stable-img]: https://img.shields.io/badge/docs-stable-blue.svg
-[docs-latest-img]: https://img.shields.io/badge/docs-latest-blue.svg
+[docs-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
 [docs-stable-url]: https://blegat.github.io/EntropicCone.jl/stable
-[docs-latest-url]: https://blegat.github.io/EntropicCone.jl/latest
+[docs-dev-url]: https://blegat.github.io/EntropicCone.jl/dev
 
 [build-img]: https://travis-ci.org/blegat/EntropicCone.jl.svg?branch=master
 [build-url]: https://travis-ci.org/blegat/EntropicCone.jl

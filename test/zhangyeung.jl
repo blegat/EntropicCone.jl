@@ -1,6 +1,8 @@
+using LinearAlgebra
+
 @testset "Zhang-Yeung inequality" begin
     n = 4
-    G = polymatroidcone(n, SimplePolyhedraLibrary{Float64}(lp_solver))
+    G = polymatroidcone(n, Polyhedra.DefaultLibrary{Float64}(lp_solver))
     # This vector is not entropic but it is a polymatroid
     invalidf = invalidfentropy(12)
 

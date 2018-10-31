@@ -1,7 +1,7 @@
-using EntropicCone
-using Base.Test
+using Test
 
 using Polyhedra
+using EntropicCone
 
 include("solvers.jl")
 include("zhangyeung.jl")

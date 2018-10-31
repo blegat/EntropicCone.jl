@@ -256,7 +256,7 @@ function getdoughertylist4copyvars3steps(perm=true)
             end
         end
         sort!(list)
-        keep = IntSet()
+        keep = BitSet()
         for i in 1:length(list)
             if i == 1 || list[i] != list[i-1]
                 push!(keep, i)

@@ -1,31 +1,33 @@
 export EntropyConeLift, equalonsubsetsof!, equalvariable!
 
-mutable struct EntropyConeLift{N, T<:Real} <: AbstractEntropyCone{N, T}
+mutable struct EntropyConeLift{T<:Real} <: AbstractEntropyCone{T}
     n::Vector{Int}
-    poly::Polyhedron{N, T}
+    poly::Polyhedron{T}
 
-    function EntropyConeLift{N, T}(n::Vector{Int}, poly::Polyhedron{N, T}) where {N, T}
-        new{N, T}(n, poly)
+    function EntropyConeLift{T}(n::Vector{Int}, poly::Polyhedron{T}) where {T}
+        new{T}(n, poly)
     end
 
-    function EntropyConeLift{N, T}(n::Vector{Int}, A::AbstractMatrix{T}, equalities::IntSet) where {N, T}
+    function EntropyConeLift{T}(n::Vector{Int}, A::AbstractMatrix{T}, equalities::BitSet) where {T}
         if sum(ntodim(n)) != size(A, 2)
             error("The dimensions in n does not agree with the number of columns of A")
         end
         if !isempty(equalities) && last(equalities) > size(A, 1)
             error("Equalities should range from 1 to the number of rows of A")
         end
-        ine = MixedMatHRep(A, spzeros(T, size(A, 1)), equalities)
-        new{N, T}(n, polyhedron(ine))
+        ine = hrep(A, spzeros(T, size(A, 1)), equalities)
+        new{T}(n, polyhedron(ine))
     end
 
 end
 
-EntropyConeLift(n::Vector{Int}, A::AbstractMatrix{T}) where {T<:Real} = EntropyConeLift(n, A, IntSet([]))
+Polyhedra.fulldim(h::EntropyConeLift) = Int(sum(ntodim(n)))
 
-Base.convert(::Type{EntropyConeLift{N, S}}, H::EntropyConeLift{N, T}) where {N, S<:Real,T<:Real} = EntropyConeLift{N, S}(H.n, Polyhedron{N, S}(H.poly))
+EntropyConeLift(n::Vector{Int}, A::AbstractMatrix{T}) where {T<:Real} = EntropyConeLift(n, A, BitSet())
 
-Base.convert(::Type{EntropyConeLift{N, T}}, h::EntropyCone{N, T}) where {N, T<:Real} = EntropyConeLift([h.n], h.poly)
+Base.convert(::Type{EntropyConeLift{S}}, H::EntropyConeLift{T}) where {S<:Real,T<:Real} = EntropyConeLift{S}(H.n, Polyhedron{S}(H.poly))
+
+Base.convert(::Type{EntropyConeLift{T}}, h::EntropyCone{T}) where {T<:Real} = EntropyConeLift([h.n], h.poly)
 
 #Base.getindex{T<:Real}(H::EntropyConeLift{T}, i) = DualEntropyLift(H.n, H.A[i,:], i in H.equalities)
 
@@ -41,23 +43,23 @@ function rangefor(h::EntropyConeLift, id::Integer)
     UnitRange{Int}(offset + indset(h, id))
 end
 
-promote_rule(::Type{EntropyConeLift{N, T}}, ::Type{EntropyCone{N, T}}) where {N, T<:Real} = EntropyConeLift{N, T}
+promote_rule(::Type{EntropyConeLift{T}}, ::Type{EntropyCone{T}}) where {T<:Real} = EntropyConeLift{T}
 
-function (*)(x::AbstractEntropyCone{N1, T}, y::AbstractEntropyCone{N2, T}) where {N1, N2, T<:Real}
+function (*)(x::AbstractEntropyCone{T}, y::AbstractEntropyCone{T}) where {T<:Real}
     # A = [x.A zeros(T, size(x.A, 1), N2); zeros(T, size(y.A, 1), N1) y.A]
     # equalities = copy(x.equalities)
     # for eq in y.equalities
     #   push!(equalities, size(x.A, 1) + eq)
     # end
-    EntropyConeLift{N1+N2, T}([x.n; y.n], x.poly * y.poly)
+    EntropyConeLift{T}([x.n; y.n], x.poly * y.poly)
 end
 
-function equalonsubsetsof!(H::EntropyConeLift{N, T}, id1, id2, S::EntropyIndex, I::EntropyIndex=emptyset(), σ=collect(1:H.n[id1])) where {N, T}
+function equalonsubsetsof!(H::EntropyConeLift{T}, id1, id2, S::EntropyIndex, I::EntropyIndex=emptyset(), σ=collect(1:H.n[id1])) where {T}
     if S == emptyset()
         return
     end
     nrows = (1<<(card(S)))-1
-    A = spzeros(T, nrows, N)
+    A = spzeros(T, nrows, Polyhedra.fulldim(H))
     cur = 1
     offset1 = offsetfor(H, id1)
     offset2 = offsetfor(H, id2)
@@ -68,21 +70,21 @@ function equalonsubsetsof!(H::EntropyConeLift{N, T}, id1, id2, S::EntropyIndex, 
             cur += 1
         end
     end
-    ine = MixedMatHRep(A, spzeros(T, nrows), IntSet(1:nrows))
+    ine = MixedMatHRep(A, spzeros(T, nrows), BitSet(1:nrows))
     intersect!(H, ine)
 end
 equalonsubsetsof!(H::EntropyConeLift, id1, id2, s::Signed) = equalonsubsetsof!(H, id1, id2, set(s))
 
-function equalvariable!(h::EntropyConeLift{N, T}, id::Integer, i::Signed, j::Signed) where {N, T}
+function equalvariable!(h::EntropyConeLift{T}, id::Integer, i::Signed, j::Signed) where {T}
     if id < 1 || id > length(h.n) || min(i,j) < 1 || max(i,j) > h.n[id]
         error("invalid")
     end
     if i == j
-        warning("useless")
+        @warn "useless"
         return
     end
     nrows = 1 << (h.n[id]-1)
-    A = spzeros(T, nrows, N)
+    A = spzeros(T, nrows, Polyhedra.fulldim(h))
     offset = offsetfor(h, id)
     cur = 1
     for S in indset(h, id)
@@ -93,7 +95,7 @@ function equalvariable!(h::EntropyConeLift{N, T}, id::Integer, i::Signed, j::Sig
             cur += 1
         end
     end
-    intersect!(h, MixedMatHRep(A, spzeros(T, nrows), IntSet(1:nrows)))
+    intersect!(h, MixedMatHRep(A, spzeros(T, nrows), BitSet(1:nrows)))
 end
 
 ninneradh(n, J::EntropyIndex, K::EntropyIndex) = n
@@ -103,7 +105,7 @@ nadh(n, J::EntropyIndex, K::EntropyIndex, adh::Type{Val{:Self}}) = nselfadh(n, J
 nadh(n, J::EntropyIndex, K::EntropyIndex, adh::Type{Val{:NoAdh}}) = n
 nadh(n, J::EntropyIndex, K::EntropyIndex, adh::Symbol) = nadh(n, J, K, Val{adh})
 
-function inneradhesivelift(h::EntropyCone{N, T}, J::EntropyIndex, K::EntropyIndex) where {N, T}
+function inneradhesivelift(h::EntropyCone{T}, J::EntropyIndex, K::EntropyIndex) where {T}
     cur = polymatroidcone(T, ninneradh(h.n, J, K))
     intersect!(cur, submodulareq(cur.n, J, K))
     lift = h * cur
@@ -112,7 +114,7 @@ function inneradhesivelift(h::EntropyCone{N, T}, J::EntropyIndex, K::EntropyInde
     equalonsubsetsof!(lift, 1, 2, K, I)
     lift
 end
-function selfadhesivelift(h::EntropyCone{N, T}, J::EntropyIndex, I::EntropyIndex) where {N, T}
+function selfadhesivelift(h::EntropyCone{T}, J::EntropyIndex, I::EntropyIndex) where {T}
     newn = nselfadh(h.n, J, I)
     K = setdiff(fullset(newn), fullset(h.n)) ∪ I
     cur = polymatroidcone(T, newn)

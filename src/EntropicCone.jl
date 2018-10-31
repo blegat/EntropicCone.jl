@@ -2,6 +2,8 @@ module EntropicCone
 
 using MathProgBase
 using Polyhedra
+using LinearAlgebra
+using SparseArrays
 
 import Base.setindex!, Base.*, Base.show, Base.getindex, Base.setdiff, Base.union, Base.issubset, Base.promote_rule, Base.in, Base.-, Base.copy, Base.intersect
 
