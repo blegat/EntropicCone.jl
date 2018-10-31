@@ -10,7 +10,7 @@ Package for approximating the Entropic Cone and solving optimization problems on
 ## Documentation
 
 - [**STABLE**][docs-stable-url] &mdash; **most recently tagged version of the documentation.**
-- [**LATEST**][docs-latest-url] &mdash; *in-development version of the documentation.*
+- [**LATEST**][docs-dev-url] &mdash; *in-development version of the documentation.*
 
 To cite this package, use
 ```
