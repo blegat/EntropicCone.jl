@@ -92,13 +92,13 @@
     p4 = zeros(Float64,2,2,1,1)
     p4[1,1,1,1] = 1/2
     p4[2,2,1,1] = 1/2
-    r4 = PrimalEntropy{15,Int}(entropyfrompdf(p4))
+    r4 = PrimalEntropy{Int}(entropyfrompdf(p4))
     mr4 = matusrentropy(1,34)
     @test r4 == mr4
     p5 = zeros(Float64,2,2,1,1,2)
     p5[1,1,1,1,1] = 1/2
     p5[2,2,1,1,2] = 1/2
-    r5 = PrimalEntropy{31,Int}(entropyfrompdf(p5))
+    r5 = PrimalEntropy{Int}(entropyfrompdf(p5))
     #r52 = PrimalEntropy{Int}(entropyfrompdf(p5))
     #r52.liftid = 2
     #r53 = PrimalEntropy{Int}(entropyfrompdf(p5))
@@ -177,7 +177,7 @@
     @test hxi05[1:15] == hxi(0).h
     @test hxi5[1:15] == hxi(0).h
 
-    Gf = EntropyConeLift{fulldim(G), Float64}(G)
+    Gf = EntropyConeLift{Float64}(G)
 
     @test !(hxi5 in Gf)
 
