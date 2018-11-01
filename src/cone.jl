@@ -20,8 +20,8 @@ mutable struct EntropyCone{T<:Real} <: AbstractEntropyCone{T}
 end
 EntropyCone(n::Int, p::Polyhedron{T}) where {T} = EntropyCone{T}(n, p)
 
-#EntropyCone{T<:AbstractFloat}(n::Int, A::AbstractMatrix{T}) = EntropyCone{size(A, 2), Float64}(n, AbstractMatrix{Float64}(A), BitSet([]))
-#EntropyCone{T<:Real}(n::Int, A::AbstractMatrix{T}) = EntropyCone{size(A, 2), Rational{BigInt}}(n, AbstractMatrix{Rational{BigInt}}(A), BitSet())
+#EntropyCone{T<:AbstractFloat}(n::Int, A::AbstractMatrix{T}) = EntropyCone{Float64}(n, AbstractMatrix{Float64}(A), BitSet([]))
+#EntropyCone{T<:Real}(n::Int, A::AbstractMatrix{T}) = EntropyCone{Rational{BigInt}}(n, AbstractMatrix{Rational{BigInt}}(A), BitSet())
 
 #Base.getindex{T<:Real}(H::EntropyCone{T}, i) = DualEntropy(H.n, H.A[i,:], i in H.equalities) # FIXME
 

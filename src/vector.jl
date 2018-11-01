@@ -109,7 +109,7 @@ function DualEntropyLift(h::DualEntropy{L, T}, m) where {L, T}
     hlift = spzeros(T, m*N)
     offset = (h.liftid-1)*N
     hlift[(offset+1):(offset+N)] = h.h
-    DualEntropyLift{L, m*N, T}(h.n*ones(Int, m), hlift)
+    DualEntropyLift{L, T}(h.n*ones(Int, m), hlift)
 end
 
 DualEntropyLift{L}(n::Vector{Int}, h::AbstractVector{T}) where {L, T} = DualEntropyLift{L, T}(n, h)
