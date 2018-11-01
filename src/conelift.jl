@@ -21,7 +21,7 @@ mutable struct EntropyConeLift{T<:Real} <: AbstractEntropyCone{T}
 
 end
 
-Polyhedra.fulldim(h::EntropyConeLift) = Int(sum(ntodim(n)))
+Polyhedra.fulldim(h::EntropyConeLift) = Int(sum(ntodim(h.n)))
 
 EntropyConeLift(n::Vector{Int}, A::AbstractMatrix{T}) where {T<:Real} = EntropyConeLift(n, A, BitSet())
 
