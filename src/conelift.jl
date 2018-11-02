@@ -39,8 +39,7 @@ function indset(h::AbstractEntropyCone, id::Integer)
 end
 function rangefor(h::EntropyConeLift, id::Integer)
     offset = offsetfor(h, id)
-    # See issue #16247 of JuliaLang/julia
-    UnitRange{Int}(offset + indset(h, id))
+    offset .+ indset(h, id)
 end
 
 promote_rule(::Type{EntropyConeLift{T}}, ::Type{EntropyCone{T}}) where {T<:Real} = EntropyConeLift{T}
@@ -121,7 +120,7 @@ function selfadhesivelift(h::EntropyCone{T}, J::EntropyIndex, I::EntropyIndex) w
     intersect!(cur, submodulareq(cur.n, fullset(h.n), K, I))
     lift = h * cur
     equalonsubsetsof!(lift, 1, 2, fullset(h.n))
-    themap = Vector{Int}(h.n)
+    themap = Vector{Int}(undef, h.n)
     cur = h.n
     for i in 1:h.n
         if myin(i, I)

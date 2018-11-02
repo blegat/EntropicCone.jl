@@ -149,7 +149,7 @@ end
 
 Polyhedra.fulldim(h::PrimalEntropy) = length(h.h)
 
-PrimalEntropy{T}(n::Int, liftid::Int=1) where {T} = PrimalEntropy{T}(n, Vector{T}(ntodim(n)), liftid)
+PrimalEntropy{T}(n::Int, liftid::Int=1) where {T} = PrimalEntropy{T}(n, Vector{T}(undef, ntodim(n)), liftid)
 PrimalEntropy(n::Int, h::AbstractVector{T}, liftid::Int=1) where {T} = PrimalEntropy{T}(n, h, liftid)
 PrimalEntropy(h::AbstractVector, liftid::Int=1) = PrimalEntropy(dimton(length(h)), h, liftid)
 
@@ -188,7 +188,7 @@ function subpdf(p::Array{Float64,n}, S::EntropyIndex) where n
     cpy = copy(p)
     for j = 1:n
         if !myin(j, S)
-            cpy = reducedim(+, cpy, j, 0.)
+            cpy = reduce(+, cpy, dims=j)
         end
     end
     cpy
@@ -197,7 +197,7 @@ end
 subpdf(p::Array{Float64,n}, s::Signed) where {n} = subpdf(p, set(s))
 
 function entropyfrompdf(p::Array{Float64,n}) where n
-    h = PrimalEntropy{Int(ntodim(n)), Float64}(n, 1)
+    h = PrimalEntropy{Float64}(n, 1)
     for i = indset(n)
         h[i] = -sum(map(xlogx, subpdf(p, i)))
     end

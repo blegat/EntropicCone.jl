@@ -9,7 +9,7 @@ end
 
 function fullin(h::AbstractPrimalEntropy, H::AbstractEntropyCone)
     Ray(h.h) in H.poly
-    #reducedim(&, (H.A*h.h) .>= 0, true)[1]
+    #all(H.A*h.h .>= 0)
 end
 function partialin(h::AbstractPrimalEntropy{S}, H::AbstractEntropyCone{T}) where {S, T}
     hps = HyperPlane{T, SparseVector{T, Int}}[]
@@ -36,7 +36,7 @@ function Base.in(h::PrimalEntropy, H::EntropyCone)
 end
 
 function Base.in(h::PrimalEntropyLift, H::EntropyConeLift)
-    if length(h.n) > length(H.n) || reducedim(|, h.n .> H.n, 1, false)[1]
+    if length(h.n) > length(H.n) || any(h.n .> H.n)
         error("The vector has a higher dimension than the cone")
     elseif h.n == H.n
         fullin(h, H)[1]

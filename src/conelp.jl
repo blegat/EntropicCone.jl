@@ -9,7 +9,7 @@ end
 function getNLDS(c::DualEntropy, W, h, T, linset, solver, newcut::Symbol, pruningalgo::AbstractCutPruningAlgo)
     K = [(:NonNeg, collect(setdiff(BitSet(1:size(W, 1)), linset))), (:Zero, collect(linset))]
     C = [(:NonNeg, collect(1:size(W, 2)))]
-    NLDS{Float64}(W, h, T, K, C, c.h, solver, pruningalgo, newcut)
+    StructDualDynProg.StructProg.NLDS{Float64}(W, h, T, K, C, c.h, solver, pruningalgo, newcut)
 end
 
 function extractNLDS(c, h::EntropyConeLift, id, idp, solver, newcut, pruningalgo::AbstractCutPruningAlgo)
@@ -46,15 +46,17 @@ end
 function addchildren!(sp::StructDualDynProg.StructProg.StochasticProgram{S}, node::Int, n::Int, old::Bool, oldnodes, newnodes, solver, max_n::Int, newcut::Symbol, pruningalgo::Vector) where S
     proba = 0.0 # It will be set at once the number of children is known (i.e. at the end of the function)
     transitions = []
-    function addchild(J::EntropyIndex,K::EntropyIndex,adh::Symbol,T=speye(Int(ntodim(n))))
+    N = Int(ntodim(n))
+    function addchild(J::EntropyIndex, K::EntropyIndex, adh::Symbol,
+                      T = SparseMatrixCSC(1.0LinearAlgebra.I, N, N))
         if (n,J,K,adh) in keys(oldnodes)
             if !old
                 child = oldnodes[(n,J,K,adh)]
-                add_scenario_transition!(sp, node, child, proba, T)
+                StructDualDynProg.SOI.add_scenario_transition!(sp, node, child, proba, T)
             end
         else
             child = create_node(sp, oldnodes, newnodes, n, J, K, adh, node, solver, max_n, newcut, pruningalgo)
-            add_scenario_transition!(sp, node, child, proba, T)
+            StructDualDynProg.SOI.add_scenario_transition!(sp, node, child, proba, T)
         end
     end
 
@@ -111,7 +113,7 @@ function addchildren!(sp::StructDualDynProg.StructProg.StochasticProgram{S}, nod
     # no optimality cut needed since only the root has an objective
     # so the probably only influence sampling hence equal probability is a fair choice
     for tr in transitions
-        StructDualDynProg.setprobability!(sp, tr, 1 / length(transitions))
+        StructDualDynProg.SOI.set!(sp, StructDualDynProg.SOI.Probability(), tr, 1 / length(transitions))
     end
 end
 
@@ -124,15 +126,16 @@ function create_node(sp::StructDualDynProg.StructProg.StochasticProgram{S}, oldn
         # h is for the parent.
         # We do not need the constraint of the parent so we want the full polyhedron with no constraint
         Np = Int(ntodim(np))
-        fullpoly = polyhedron(hrep(HalfSpace{Np, S, SparseVector{S, Int}}[]))
-        h = EntropyCone{Np, S}(np, fullpoly)
+        fullpoly = polyhedron(hrep(HalfSpace{S, SparseVector{S, Int}}[]; d = Np))
+        h = EntropyCone{S}(np, fullpoly)
         lift = adhesivelift(h, Jp, Kp, adhp)
         c = constdualentropy(n, 0)
         nlds = extractNLDS(c, lift, 2, 1, solver, newcut, pruningalgo[n])
-        newnodedata = StructDualDynProg.NodeData(nlds, Np)
-        newnode = add_scenario_state!(sp, newnodedata)
+        newnodedata = StructDualDynProg.StructProg.NodeData(nlds, Np)
+        newnode = StructDualDynProg.SOI.add_scenario_node!(sp, newnodedata)
         # Only the root node has a non-zero objective so no need for optimality cuts
-        StructDualDynProg.setcutgenerator!(sp, newnode, NoOptimalityCutGenerator())
+        StructDualDynProg.SOI.set!(sp, StructDualDynProg.StructProg.CutGenerator(),
+                                   newnode, StructDualDynProg.StructProg.NoOptimalityCutGenerator())
         newnodes[(np,Jp,Kp,adhp)] = newnode
         addchildren!(sp, newnode, n, false, oldnodes, newnodes, solver, max_n, newcut, pruningalgo)
     end
@@ -145,9 +148,10 @@ function fillroot!(sp::StructDualDynProg.StructProg.StochasticProgram, c::DualEn
     T = spzeros(Float64, size(h.A, 1), 0)
     hb = sparsevec(h.b) # FIXME it was done before but not sure it is useful as it the the rhs
     nlds = getNLDS(c, h.A, hb, T, h.linset, solver, newcut, AvgCutPruningAlgo(-1))
-    rootdata = StructDualDynProg.NodeData(nlds, 0)
-    root = add_scenario_state!(sp, rootdata)
-    StructDualDynProg.setcutgenerator!(sp, root, NoOptimalityCutGenerator())
+    rootdata = StructDualDynProg.StructProg.NodeData(nlds, 0)
+    root = StructDualDynProg.SOI.add_scenario_node!(sp, rootdata)
+    StructDualDynProg.SOI.set!(sp, StructDualDynProg.StructProg.CutGenerator(),
+                               root, StructDualDynProg.StructProg.NoOptimalityCutGenerator())
     newnodes[(H.n,emptyset(),emptyset(),:NoAdh)] = root
     oldnodes = Dict{Tuple{Int,EntropyIndex,EntropyIndex,Symbol},Int}()
     addchildren!(sp, root, H.n, false, oldnodes, newnodes, solver, max_n, newcut, pruningalgo)
