@@ -3,7 +3,6 @@ using Documenter, EntropicCone
 makedocs(
     sitename = "EntropicCone",
     # See https://github.com/JuliaDocs/Documenter.jl/issues/868
-    # Remove for Documenter v0.21
     html_prettyurls = get(ENV, "CI", nothing) == "true",
     pages = [
         "Index" => "index.md",
