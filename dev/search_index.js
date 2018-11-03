@@ -9,9 +9,9 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "#SumOfSquares-–-Entropic-Cone-1",
+    "location": "#Entropic-Cone-1",
     "page": "Index",
-    "title": "SumOfSquares –- Entropic Cone",
+    "title": "Entropic Cone",
     "category": "section",
     "text": "EntropicCone utilities for constructing and using outer and inner approximations of the Entropic Cone."
 },
