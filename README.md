@@ -12,6 +12,32 @@ Package for approximating the Entropic Cone and solving optimization problems on
 - [**STABLE**][docs-stable-url] &mdash; **most recently tagged version of the documentation.**
 - [**LATEST**][docs-dev-url] &mdash; *in-development version of the documentation.*
 
+## Examples
+
+Example notebooks are available in the [`examples` folder](https://github.com/blegat/EntropicCone.jl/tree/master/examples).
+We link them below with the literature.
+
+### Reproducing
+
+The linked notebooks reproduce the results of the following papers:
+
+* [BJ16] [B. Legat](https://perso.uclouvain.be/benoit.legat), [R. M. Jungers](https://perso.uclouvain.be/raphael.jungers/content/home).
+[*Parallel optimization on the Entropic Cone*](http://sites.uclouvain.be/sitb2016/Proceedings_SITB2016_preliminary.pdf).
+[37rd Symposium on Information Theory in the Benelux](http://sites.uclouvain.be/sitb2016), **2016**:
+[Ingleton Score result](https://github.com/blegat/EntropicCone.jl/blob/master/examples/Parallel%20optimization%20on%20the%20Entropic%20Cone.ipynb).
+
+### Exploring
+
+The linked notebooks explores the examples of the following papers using this
+package:
+
+* [ZY97] Z. Zhang, R. W. Yeung.
+*A non-Shannon-type conditional inequality of information quantities.*
+IEEE Transactions on Information Theory, **1997**:
+[Zhang-Yeung inequality](https://github.com/blegat/EntropicCone.jl/blob/master/examples/Zhang-Yeung_inequality.ipynb).
+
+## How to cite
+
 To cite this package, use
 ```
 @InProceedings{legat2016parallel,
