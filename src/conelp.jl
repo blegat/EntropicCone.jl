@@ -1,11 +1,6 @@
 using StructDualDynProg, CutPruners
 export appendtoSDDPLattice!, updatemaxncuts!
 
-function MathProgBase.linprog(c::DualEntropy, h::EntropyCone, cut::DualEntropy)
-    cuthrep = HalfSpace(cut.h, 1)
-    MathProgBase.linprog(c.h, intersect(h.poly, cuthrep))
-end
-
 function getNLDS(c::DualEntropy, W, h, T, linset, solver, newcut::Symbol, pruningalgo::AbstractCutPruningAlgo)
     K = [(:NonNeg, collect(setdiff(BitSet(1:size(W, 1)), linset))), (:Zero, collect(linset))]
     C = [(:NonNeg, collect(1:size(W, 2)))]

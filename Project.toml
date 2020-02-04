@@ -1,0 +1,27 @@
+name = "EntropicCone"
+uuid = "0c2d9635-bf4a-4f3f-ae4a-4ec8322ead78"
+authors = ["Benoit Legat <benoit.legat@gmail.com>"]
+version = "0.1.0"
+
+[deps]
+CutPruners = "65d46eb8-70e9-5a30-bf48-2afa3a021b8f"
+GLPK = "60bf3e95-4087-53dc-ae20-288a0d20c6a6"
+JuMP = "4076af6c-e467-56ae-b986-b466b2749572"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Polyhedra = "67491407-f73d-577b-9b50-8179a7c68029"
+QHull = "a8468747-bd6f-53ef-9e5c-744dbc5c59e7"
+SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+StructDualDynProg = "5d41aeb0-57df-5a94-a3c4-60ba49600646"
+StructJuMP = "34f15cae-5318-50c9-93d3-9feadd34e321"
+
+[compat]
+Polyhedra = "0.4, 0.5"
+StructDualDynProg = "0.2, 0.3"
+julia = "1"
+
+[extras]
+GLPK = "60bf3e95-4087-53dc-ae20-288a0d20c6a6"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["GLPK", "Test"]

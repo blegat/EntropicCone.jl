@@ -11,8 +11,8 @@ end
 
 # Load an available solver
 lp_solver = nothing
-glp = try_import(:GLPKMathProgInterface)
-glp && (lp_solver = GLPKMathProgInterface.GLPKSolverLP())
+glp = try_import(:GLPK)
+glp && (lp_solver = with_optimizer(GLPK.Optimizer))
 if lp_solver === nothing
     cbc = try_import(:Cbc)
     if cbc; import Clp; end
