@@ -5,6 +5,10 @@
 | [![][docs-stable-img]][docs-stable-url] | [![Build Status][build-img]][build-url] |
 | [![][docs-dev-img]][docs-dev-url]       | [![Codecov branch][codecov-img]][codecov-url] |
 
+**Important note:** Julia v1.6 and later are not supported yet because [JuMP v0.18 does not](https://github.com/jump-dev/JuMP.jl/issues/2438)
+and EntropicCone does not support JuMP v0.19 or later because [StructDualDynProg does not](https://github.com/JuliaStochOpt/StructDualDynProg.jl/pull/26).
+The package should work fine on Julia v1.0 to v1.5 though.
+
 Package for approximating the Entropic Cone and solving optimization problems on it.
 
 ## Documentation
