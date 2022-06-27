@@ -1,0 +1,26 @@
+name = "EntropicCone"
+uuid = "46c19be6-bce2-539c-96b6-a48c64de3b10"
+
+[deps]
+CutPruners = "65d46eb8-70e9-5a30-bf48-2afa3a021b8f"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+MathProgBase = "fdba3010-5040-5b88-9595-932c9decdf73"
+Polyhedra = "67491407-f73d-577b-9b50-8179a7c68029"
+SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+StructDualDynProg = "5d41aeb0-57df-5a94-a3c4-60ba49600646"
+
+[compat]
+CutPruners = "0.2"
+MathProgBase = "0.7"
+Polyhedra = "0.4.3"
+StructDualDynProg = "0.2"
+julia = "1"
+
+[extras]
+GLPK = "60bf3e95-4087-53dc-ae20-288a0d20c6a6"
+GLPKMathProgInterface = "3c7084bd-78ad-589a-b5bb-dbd673274bea"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["GLPK", "GLPKMathProgInterface", "LinearAlgebra", "Test"]
