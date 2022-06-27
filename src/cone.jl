@@ -62,7 +62,7 @@ function Base.intersect!(H::EntropyCone, hs::Vector{<:DualEntropy{L}}) where {L}
 end
 
 function Base.intersect!(h::AbstractEntropyCone, hr::HRepresentation)
-    h.poly = intersect(h.poly, hr)
+    intersect!(h.poly, hr)
 end
 function Base.intersect!(h1::AbstractEntropyCone, h2::AbstractEntropyCone)
     if h1.n != h2.n
