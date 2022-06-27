@@ -10,7 +10,7 @@ SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 StructDualDynProg = "5d41aeb0-57df-5a94-a3c4-60ba49600646"
 
 [compat]
-CutPruners = "0.2"
+CutPruners = "0.1"
 MathProgBase = "0.7"
 Polyhedra = "0.4.3"
 StructDualDynProg = "0.2"
