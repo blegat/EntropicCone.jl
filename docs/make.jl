@@ -3,7 +3,7 @@ using Documenter, EntropicCone
 makedocs(
     sitename = "EntropicCone",
     # See https://github.com/JuliaDocs/Documenter.jl/issues/868
-    html_prettyurls = get(ENV, "CI", nothing) == "true",
+    format = Documenter.HTML(prettyurls = get(ENV, "CI", nothing) == "true"),
     pages = [
         "Index" => "index.md",
         "Introduction" => "intro.md",

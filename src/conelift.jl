@@ -57,20 +57,13 @@ function equalonsubsetsof!(H::EntropyConeLift{T}, id1, id2, S::EntropyIndex, I::
     if S == emptyset()
         return
     end
-    nrows = (1<<(card(S)))-1
-    A = spzeros(T, nrows, Polyhedra.fulldim(H))
-    cur = 1
     offset1 = offsetfor(H, id1)
     offset2 = offsetfor(H, id2)
-    for K in setsto(S)
-        if K ⊆ S && !(K ⊆ I)
-            A[cur, offset1+K] = 1
-            A[cur, offset2+mymap(σ, K, H.n[id2])] = -1
-            cur += 1
-        end
-    end
-    ine = MixedMatHRep(A, spzeros(T, nrows), BitSet(1:nrows))
-    intersect!(H, ine)
+    ine = [
+        HyperPlane(sparsevec(Int[offset1+K, offset2+mymap(σ, K, H.n[id2])], [one(T), -one(T)], Polyhedra.fulldim(H)), zero(T))
+        for K in setsto(S) if K ⊆ S && !(K ⊆ I)
+    ]
+    intersect!(H, hrep(ine))
 end
 equalonsubsetsof!(H::EntropyConeLift, id1, id2, s::Signed) = equalonsubsetsof!(H, id1, id2, set(s))
 

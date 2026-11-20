@@ -1,3 +1,8 @@
+using EntropicCone, Polyhedra, Test
+if !isdefined(@__MODULE__, :lp_solver)
+    include("solvers.jl")
+end
+
 @testset "Matúš" begin
     function eq3(id1, id2)
         h1 = submodular(5,2,4,3) + submodular(5,3,4,2)
