@@ -1,5 +1,9 @@
 [deps]
+EntropicCone = "46c19be6-bce2-539c-96b6-a48c64de3b10"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 
 [compat]
-Documenter = "~0.20"
+Documenter = "1"
+
+[sources]
+EntropicCone = {path = ".."}

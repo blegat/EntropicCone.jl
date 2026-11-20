@@ -1,7 +1,7 @@
 name: Documentation
 on:
   push:
-    branches: [master]
+    branches: [main]
     tags: '*'
   pull_request:
     types: [opened, synchronize, reopened]
@@ -12,13 +12,12 @@ jobs:
       # Fix for Plots with GR backend, see https://github.com/JuliaPolyhedra/Polyhedra.jl/pull/265
       GKSwstype: nul
     steps:
-      - uses: actions/checkout@v2
-      - uses: julia-actions/setup-julia@latest
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
         with:
-          version: '1.5'
+          version: '1'
       - name: Install dependencies
-        run: julia --project=docs/ -e 'using Pkg; Pkg.instantiate();
-                                       Pkg.develop(PackageSpec(path=pwd()))'
+        run: julia --project -e 'using Pkg; Pkg.instantiate()'
       - name: Build and deploy
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # For authentication with GitHub Actions token

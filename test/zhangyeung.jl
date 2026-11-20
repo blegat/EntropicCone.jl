@@ -1,3 +1,8 @@
+using EntropicCone, Polyhedra, Test
+if !isdefined(@__MODULE__, :lp_solver)
+    include("solvers.jl")
+end
+
 using LinearAlgebra
 
 @testset "Zhang-Yeung inequality" begin
