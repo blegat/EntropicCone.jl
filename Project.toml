@@ -16,6 +16,7 @@ StructDualDynProg = {url = "https://github.com/JuliaStochOpt/StructDualDynProg.j
 CutPruners = "0.3"
 JuMP = "1"
 Polyhedra = "0.9"
+SparseArrays = "1.10"
 julia = "1.10"
 
 [workspace]
