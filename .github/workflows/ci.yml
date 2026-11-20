@@ -27,6 +27,15 @@ jobs:
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
+      - uses: julia-actions/cache@v2
+      # Julia 1.10 predates Project.toml [sources].
+      - name: Install the prerelease dependency on Julia 1.10
+        if: matrix.version == '1.10'
+        shell: julia --project=. {0}
+        run: |
+          using Pkg, TOML
+          source = TOML.parsefile("Project.toml")["sources"]["StructDualDynProg"]
+          Pkg.add(url=source["url"], rev=source["rev"])
       - uses: julia-actions/cache@v3
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1

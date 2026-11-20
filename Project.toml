@@ -10,7 +10,7 @@ SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 StructDualDynProg = "5d41aeb0-57df-5a94-a3c4-60ba49600646"
 
 [sources]
-StructDualDynProg = {url = "https://github.com/JuliaStochOpt/StructDualDynProg.jl.git", rev = "bff34cb6e0216696ec18ba15a957abf7bdfc1cb5"}
+StructDualDynProg = {url = "https://github.com/JuliaStochOpt/StructDualDynProg.jl.git", rev = "main"}
 
 [compat]
 CutPruners = "0.3"
