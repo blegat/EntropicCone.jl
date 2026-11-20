@@ -102,7 +102,7 @@ function polymatroidcone(::Type{T}, n::Integer, lib = nothing, minimal = true) w
     hss = Vector{HT}(undef, n_nonnegative + n_nondecreasing + n_submodular)
     for j = 1:n
         for k = (j+1):n
-            hss[offset_submodular+cur_submodular] = HRepElement(submodular(n, set(j), set(k)))
+            hss[offset_submodular+cur_submodular] = HRepElement(submodular(n, singleton(j), singleton(k)))
             cur_submodular += 1
         end
     end
@@ -114,12 +114,12 @@ function polymatroidcone(::Type{T}, n::Integer, lib = nothing, minimal = true) w
         for j = 1:n
             if !myin(j, I)
                 if !minimal || card(I) == n-1
-                    hss[offset_nondecreasing+cur_nondecreasing] = HRepElement(nondecreasing(n, I, set(j)))
+                    hss[offset_nondecreasing+cur_nondecreasing] = HRepElement(nondecreasing(n, I, singleton(j)))
                     cur_nondecreasing += 1
                 end
                 for k = (j+1):n
                     if !myin(k, I)
-                        hss[offset_submodular+cur_submodular] = HRepElement(submodular(n, set(j), set(k), I))
+                        hss[offset_submodular+cur_submodular] = HRepElement(submodular(n, singleton(j), singleton(k), I))
                         cur_submodular += 1
                     end
                 end
