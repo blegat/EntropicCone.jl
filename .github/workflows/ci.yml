@@ -27,7 +27,7 @@ jobs:
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v2
+      - uses: julia-actions/cache@v3
       # Julia 1.10 predates Project.toml [sources].
       - name: Install the prerelease dependency on Julia 1.10
         if: matrix.version == '1.10'
