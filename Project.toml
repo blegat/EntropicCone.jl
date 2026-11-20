@@ -9,15 +9,13 @@ Polyhedra = "67491407-f73d-577b-9b50-8179a7c68029"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 StructDualDynProg = "5d41aeb0-57df-5a94-a3c4-60ba49600646"
 
-[sources]
-StructDualDynProg = {url = "https://github.com/JuliaStochOpt/StructDualDynProg.jl.git", rev = "main"}
-
 [compat]
 CutPruners = "0.3"
 JuMP = "1"
 LinearAlgebra = "1.10"
 Polyhedra = "0.9"
 SparseArrays = "1.10"
+StructDualDynProg = "0.3"
 julia = "1.10"
 
 [workspace]
